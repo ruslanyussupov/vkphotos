@@ -1,36 +1,49 @@
 <?xml version="1.0" encoding="utf-8"?>
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:tools="http://schemas.android.com/tools"
-    android:orientation="horizontal"
     android:layout_width="match_parent"
-    android:layout_height="72dp">
+    android:layout_height="71dp"
+    android:orientation="vertical"
+    android:clickable="true"
+    android:focusable="true">
 
-    <ImageView
-        android:id="@+id/photo"
-        android:layout_width="56dp"
-        android:layout_height="56dp"
-        android:layout_gravity="center_vertical"
-        android:contentDescription="@string/user_avatar_content_desc"
-        android:scaleType="centerCrop"
-        android:src="@drawable/camera_100"/>
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="70dp"
+        android:orientation="horizontal"
+        android:paddingTop="10dp"
+        android:paddingBottom="10dp"
+        android:paddingLeft="16dp"
+        android:paddingStart="16dp"
+        android:paddingRight="16dp"
+        android:paddingEnd="16dp"
+        android:background="?android:attr/selectableItemBackground">
 
-    <TextView
-        android:id="@+id/first_name"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:layout_marginLeft="16dp"
-        android:layout_marginStart="16dp"
-        android:layout_gravity="center_vertical"
-        android:textSize="16sp"
-        tools:text="Ruslan"/>
+        <ImageView
+            android:id="@+id/photo"
+            android:layout_width="50dp"
+            android:layout_height="50dp"
+            android:layout_gravity="center_vertical"
+            android:contentDescription="@string/user_avatar_content_desc"
+            android:scaleType="centerCrop"
+            android:src="@drawable/camera_circle_100"/>
 
-    <TextView
-        android:id="@+id/last_name"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:layout_marginLeft="5dp"
-        android:layout_marginStart="5dp"
-        android:layout_gravity="center_vertical"
-        android:textSize="16sp"
-        tools:text="Iusupov"/>
+        <TextView
+            android:id="@+id/full_name"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginLeft="16dp"
+            android:layout_marginStart="16dp"
+            android:layout_gravity="center_vertical"
+            android:textSize="16sp"
+            android:scrollHorizontally="true"
+            android:singleLine="true"
+            android:ellipsize="end"
+            tools:text="Ruslan Iusupov"/>
+    </LinearLayout>
+
+    <View
+        android:layout_width="match_parent"
+        android:layout_height="1dp"
+        android:background="@color/grey_10"/>
 </LinearLayout>

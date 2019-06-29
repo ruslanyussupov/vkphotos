@@ -1,6 +1,7 @@
 package dev.iusupov.vkphotos
 
 import dev.iusupov.vkphotos.model.FriendsResponse
+import dev.iusupov.vkphotos.model.PhotosResponse
 import dev.iusupov.vkphotos.model.User
 import dev.iusupov.vkphotos.repository.Api
 
@@ -8,7 +9,7 @@ class FakeApi(private val count: Int = 100,
               var error: Exception? = null,
               var withRecovery: Boolean = false) : Api {
 
-    private var thrownErrors = 0
+    private var fetchingFriendsThrownErrors = 0
 
     val users by lazy {
         List(count) { index ->
@@ -20,11 +21,11 @@ class FakeApi(private val count: Int = 100,
     override fun fetchFriends(userId: Int, count: Int, offset: Int): FriendsResponse {
         error?.let { error ->
             if (withRecovery) {
-                if (thrownErrors < 2) {
-                    thrownErrors++
+                if (fetchingFriendsThrownErrors < 2) {
+                    fetchingFriendsThrownErrors++
                     throw error
                 } else {
-                    thrownErrors = 0
+                    fetchingFriendsThrownErrors = 0
                 }
             } else {
                 throw error
@@ -32,5 +33,9 @@ class FakeApi(private val count: Int = 100,
         }
         val result = users.subList(offset, offset + count)
         return FriendsResponse(count, result)
+    }
+
+    override fun fetchPhotos(ownerId: Int, count: Int, offset: Int): PhotosResponse {
+        TODO("not implemented")
     }
 }

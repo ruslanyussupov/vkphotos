@@ -13,6 +13,7 @@ import com.vk.api.sdk.auth.VKScope
 import dev.iusupov.vkphotos.ui.friends.FriendsActivity
 import dev.iusupov.vkphotos.R
 import kotlinx.android.synthetic.main.activity_main.*
+import kotlinx.android.synthetic.main.toolbar.*
 import timber.log.Timber
 
 class MainActivity : AppCompatActivity() {
@@ -20,6 +21,8 @@ class MainActivity : AppCompatActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
+
+        setUpActionBar()
 
         login()
 
@@ -41,6 +44,11 @@ class MainActivity : AppCompatActivity() {
             launchFriendsActivity()
             finish()
         }
+    }
+
+    private fun setUpActionBar() {
+        setSupportActionBar(toolbar)
+        supportActionBar?.title = getString(R.string.app_name)
     }
 
     private fun isLoginResult(requestCode: Int, resultCode: Int, data: Intent?): Boolean {

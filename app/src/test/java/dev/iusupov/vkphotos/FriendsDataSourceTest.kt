@@ -50,7 +50,7 @@ class FriendsDataSourceTest {
 
         dataSource.loadInitial(params, callback)
 
-        val state = dataSource.networkState.value?.state
+        val state = dataSource.loadMoreNetworkState.value?.state
 
         assertThat(state, `is`(State.SUCCESS))
     }
@@ -69,11 +69,12 @@ class FriendsDataSourceTest {
 
         dataSource.loadRange(params, callback)
 
-        val state = dataSource.networkState.value?.state
+        val state = dataSource.loadMoreNetworkState.value?.state
 
         assertThat(state, `is`(State.SUCCESS))
     }
 
+    // TODO: get rid off waiting for delays between errors
     @Test
     fun loadInitialWithError() {
         fakeApi.error = Exception(ERROR_MSG)
@@ -92,13 +93,14 @@ class FriendsDataSourceTest {
 
         dataSource.loadInitial(params, callback)
 
-        val state = dataSource.networkState.value?.state
-        val errorMsg = dataSource.networkState.value?.errorMsg
+        val state = dataSource.loadMoreNetworkState.value?.state
+        val errorMsg = dataSource.loadMoreNetworkState.value?.error?.message
 
         assertThat(state, `is`(State.ERROR))
         assertThat(errorMsg, `is`(ERROR_MSG))
     }
 
+    // TODO: get rid off waiting for delays between errors
     @Test
     fun loadRangeWithError() {
         fakeApi.error = Exception(ERROR_MSG)
@@ -113,13 +115,14 @@ class FriendsDataSourceTest {
 
         dataSource.loadRange(params, callback)
 
-        val state = dataSource.networkState.value?.state
-        val errorMsg = dataSource.networkState.value?.errorMsg
+        val state = dataSource.loadMoreNetworkState.value?.state
+        val errorMsg = dataSource.loadMoreNetworkState.value?.error?.message
 
         assertThat(state, `is`(State.ERROR))
         assertThat(errorMsg, `is`(ERROR_MSG))
     }
 
+    // TODO: get rid off waiting for delays between errors
     @Test
     fun loadInitialAfterRecovery() {
         fakeApi.error = Exception(ERROR_MSG)
@@ -139,11 +142,12 @@ class FriendsDataSourceTest {
 
         dataSource.loadInitial(params, callback)
 
-        val state = dataSource.networkState.value?.state
+        val state = dataSource.loadMoreNetworkState.value?.state
 
         assertThat(state, `is`(State.SUCCESS))
     }
 
+    // TODO: get rid off waiting for delays between errors
     @Test
     fun loadRangeAfterRecovery() {
         fakeApi.error = Exception(ERROR_MSG)
@@ -159,11 +163,12 @@ class FriendsDataSourceTest {
 
         dataSource.loadRange(params, callback)
 
-        val state = dataSource.networkState.value?.state
+        val state = dataSource.loadMoreNetworkState.value?.state
 
         assertThat(state, `is`(State.SUCCESS))
     }
 
+    // TODO: get rid off waiting for delays between errors
     @Test
     fun loadInitialWithRetry() {
         fakeApi.error = Exception(ERROR_MSG)
@@ -183,8 +188,8 @@ class FriendsDataSourceTest {
 
         dataSource.loadInitial(params, callback)
 
-        var state = dataSource.networkState.value?.state
-        val errorMsg = dataSource.networkState.value?.errorMsg
+        var state = dataSource.loadMoreNetworkState.value?.state
+        val errorMsg = dataSource.loadMoreNetworkState.value?.error?.message
 
         assertThat(state, `is`(State.ERROR))
         assertThat(errorMsg, `is`(ERROR_MSG))
@@ -192,11 +197,12 @@ class FriendsDataSourceTest {
         fakeApi.error = null
         dataSource.retry?.invoke()
 
-        state = dataSource.networkState.value?.state
+        state = dataSource.loadMoreNetworkState.value?.state
 
         assertThat(state, `is`(State.SUCCESS))
     }
 
+    // TODO: get rid off waiting for delays between errors
     @Test
     fun loadRangeWithRetry() {
         fakeApi.error = Exception(ERROR_MSG)
@@ -212,8 +218,8 @@ class FriendsDataSourceTest {
 
         dataSource.loadRange(params, callback)
 
-        var state = dataSource.networkState.value?.state
-        val errorMsg = dataSource.networkState.value?.errorMsg
+        var state = dataSource.loadMoreNetworkState.value?.state
+        val errorMsg = dataSource.loadMoreNetworkState.value?.error?.message
 
         assertThat(state, `is`(State.ERROR))
         assertThat(errorMsg, `is`(ERROR_MSG))
@@ -221,7 +227,7 @@ class FriendsDataSourceTest {
         fakeApi.error = null
         dataSource.retry?.invoke()
 
-        state = dataSource.networkState.value?.state
+        state = dataSource.loadMoreNetworkState.value?.state
 
         assertThat(state, `is`(State.SUCCESS))
     }

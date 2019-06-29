@@ -44,7 +44,7 @@ class RepositoryTest {
         val networkObserver = LoggingObserver<NetworkState>()
 
         listing.pagedList.observeForever(usersObserver)
-        listing.networkState.observeForever(networkObserver)
+        listing.loadMoreNetworkState.observeForever(networkObserver)
 
         assertThat(usersObserver.value, `is`(expected))
         assertThat(networkObserver.value?.state, `is`(State.SUCCESS))
@@ -59,11 +59,11 @@ class RepositoryTest {
         val networkObserver = LoggingObserver<NetworkState>()
 
         listing.pagedList.observeForever(usersObserver)
-        listing.networkState.observeForever(networkObserver)
+        listing.loadMoreNetworkState.observeForever(networkObserver)
 
         assertThat(usersObserver.value?.size, `is`(0))
         assertThat(networkObserver.value?.state, `is`(State.ERROR))
-        assertThat(networkObserver.value?.errorMsg, `is`(ERROR_MSG))
+        assertThat(networkObserver.value?.error?.message, `is`(ERROR_MSG))
 
         fakeApi.error = null
         listing.retry()

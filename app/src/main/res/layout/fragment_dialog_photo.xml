@@ -1,0 +1,37 @@
+<?xml version="1.0" encoding="utf-8"?>
+<layout xmlns:android="http://schemas.android.com/apk/res/android">
+
+    <data>
+        <import type="androidx.lifecycle.LiveData" />
+        <import type="dev.iusupov.vkphotos.NetworkState" />
+        <import type="dev.iusupov.vkphotos.State" />
+        <import type="android.view.View" />
+
+        <variable
+            name="networkState"
+            type="LiveData&lt;NetworkState>" />
+    </data>
+
+    <FrameLayout
+        android:layout_width="match_parent"
+        android:layout_height="match_parent">
+
+        <ImageView
+            android:id="@+id/photo"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:contentDescription="@string/photo_content_desc"
+            android:scaleType="fitCenter"
+            android:background="@android:color/black"/>
+
+        <ProgressBar
+            android:id="@+id/progress_bar"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_gravity="center"
+            android:indeterminate="true"
+            android:visibility="@{networkState.state == State.ERROR || networkState.state == State.SUCCESS ? View.GONE : View.VISIBLE}"/>
+
+    </FrameLayout>
+
+</layout>

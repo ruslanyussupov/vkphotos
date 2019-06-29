@@ -8,6 +8,15 @@
     <string name="no_network_connection">No network connection.</string>
     <string name="retry">Retry</string>
     <string name="log_out">Log Out</string>
+    <string name="full_name">%1$s %2$s</string>
+    <string name="empty_name_placeholder">%1$32s</string>
+    <string name="photo_content_desc">Photo from user\'s album.</string>
+    <string name="default_try_again_message">Something went wrong. Please try again.</string>
+    <string name="default_error_message">Something went wrong…</string>
+    <string name="check_connection_and_retry">Please check the connection and try again.</string>
+    <string name="photos_empty_state">There are no photos…</string>
+    <string name="friends_empty_state">There are no friends…</string>
+    <string name="profile_is_private">Profile is private.</string>
 
     <integer name="com_vk_sdk_AppId">7000622</integer>
 

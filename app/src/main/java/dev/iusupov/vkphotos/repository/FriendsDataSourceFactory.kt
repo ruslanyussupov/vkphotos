@@ -15,7 +15,7 @@ class FriendsDataSourceFactory(private val userId: Int = -1,
     val source: LiveData<FriendsDataSource> = _source
 
     override fun create(): DataSource<Int, User> {
-        Timber.d("Creating friends data source...")
+        Timber.d("Creating friends positional data source...")
         val friendsDataSource = FriendsDataSource(userId, api, coroutineScope)
         _source.postValue(friendsDataSource)
         return friendsDataSource
