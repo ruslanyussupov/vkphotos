@@ -1,6 +1,6 @@
 <resources>
     <string name="app_name">VK Photos</string>
-    <string name="try_again">Try again</string>
+    <string name="log_in">Log In</string>
     <string name="vk_sdk_prefs">vk_sdk_prefs</string>
     <string name="access_token">access_token</string>
     <string name="auth_failed">Authorization failed.</string>

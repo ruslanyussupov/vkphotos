@@ -5,6 +5,7 @@ import android.content.Intent
 import androidx.appcompat.app.AppCompatActivity
 import android.os.Bundle
 import android.view.View
+import android.widget.Toast
 import androidx.core.content.edit
 import com.vk.api.sdk.VK
 import com.vk.api.sdk.auth.VKAccessToken
@@ -12,7 +13,7 @@ import com.vk.api.sdk.auth.VKAuthCallback
 import com.vk.api.sdk.auth.VKScope
 import dev.iusupov.vkphotos.ui.friends.FriendsActivity
 import dev.iusupov.vkphotos.R
-import kotlinx.android.synthetic.main.activity_main.*
+import kotlinx.android.synthetic.main.activity_log_in.*
 import kotlinx.android.synthetic.main.toolbar.*
 import timber.log.Timber
 
@@ -20,13 +21,16 @@ class LogInActivity : AppCompatActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        setContentView(R.layout.activity_main)
+        setContentView(R.layout.activity_log_in)
 
-        setUpActionBar()
+        setupActionBar()
 
-        login()
+        setLogInBtnOnClickListener()
+    }
 
-        setTryAgainBtnOnClickListener()
+    override fun onResume() {
+        super.onResume()
+        checkIsLoggedIn()
     }
 
     override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
@@ -35,18 +39,22 @@ class LogInActivity : AppCompatActivity() {
         }
     }
 
-    private fun login() {
-        if (!VK.isLoggedIn()) {
-            Timber.i("Logging in...")
-            VK.login(this, arrayListOf(VKScope.FRIENDS, VKScope.PHOTOS))
-        } else {
+    private fun logIn() {
+        Timber.i("Logging in...")
+        VK.login(this, arrayListOf(VKScope.FRIENDS, VKScope.PHOTOS))
+    }
+
+    private fun checkIsLoggedIn() {
+        if (VK.isLoggedIn()) {
             Timber.i("Logged in.")
             launchFriendsActivity()
             finish()
+        } else {
+            log_in_btn.visibility = View.VISIBLE
         }
     }
 
-    private fun setUpActionBar() {
+    private fun setupActionBar() {
         setSupportActionBar(toolbar)
         supportActionBar?.title = getString(R.string.app_name)
     }
@@ -58,16 +66,20 @@ class LogInActivity : AppCompatActivity() {
             override fun onLogin(token: VKAccessToken) {
                 Timber.i("Authorization process completed. ${token.accessToken}")
                 saveToken(token.accessToken)
-                hideErrorState()
                 launchFriendsActivity()
                 finish()
             }
 
             override fun onLoginFailed(errorCode: Int) {
+                // TODO: handle cancellation
                 Timber.e("Something went wrong while the authorization. Error code: $errorCode")
-                showErrorState()
+                showAuthFailed()
             }
         })
+    }
+
+    private fun showAuthFailed() {
+        Toast.makeText(this, getString(R.string.auth_failed), Toast.LENGTH_LONG).show()
     }
 
     private fun saveToken(accessToken: String) {
@@ -77,19 +89,10 @@ class LogInActivity : AppCompatActivity() {
         }
     }
 
-    private fun showErrorState() {
-        auth_status.visibility = View.VISIBLE
-        btn_try_again.visibility = View.VISIBLE
-    }
-
-    private fun hideErrorState() {
-        auth_status.visibility = View.GONE
-        btn_try_again.visibility = View.GONE
-    }
-
-    private fun setTryAgainBtnOnClickListener() {
-        btn_try_again.setOnClickListener {
-            login()
+    private fun setLogInBtnOnClickListener() {
+        log_in_btn.setOnClickListener {
+            it.visibility = View.GONE
+            logIn()
         }
     }
 
