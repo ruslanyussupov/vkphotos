@@ -10,43 +10,48 @@ import dev.iusupov.vkphotos.*
 import dev.iusupov.vkphotos.databinding.ActivityPhotosBinding
 import dev.iusupov.vkphotos.ext.getViewModel
 import dev.iusupov.vkphotos.model.PhotoItem
-import kotlinx.android.synthetic.main.activity_photos.*
+import dev.iusupov.vkphotos.utils.hasNetworkConnection
+import dev.iusupov.vkphotos.vksdk.ERROR_CODE_NO_DATA
+import dev.iusupov.vkphotos.vksdk.ERROR_CODE_PRIVATE_PROFILE
 import kotlinx.android.synthetic.main.activity_photos.root
 import kotlinx.android.synthetic.main.toolbar.*
 
 class PhotosActivity : AppCompatActivity() {
 
     private lateinit var viewModel: PhotosViewModel
+    private lateinit var binding: ActivityPhotosBinding
     private var ownerId: Int = -1
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
-        val binding: ActivityPhotosBinding = DataBindingUtil.setContentView(this, R.layout.activity_photos)
+        binding = DataBindingUtil.setContentView(this, R.layout.activity_photos)
 
         ownerId = intent.getIntExtra(EXTRA_OWNER_ID, -1)
-
         viewModel = getViewModel { PhotosViewModel(ownerId) }
-
-        val title = intent.getStringExtra(EXTRA_FULL_NAME) ?: getString(R.string.app_name)
-        setUpActionBar(title)
 
         binding.lifecycleOwner = this
         binding.viewModel = viewModel
+
+        val title = intent.getStringExtra(EXTRA_FULL_NAME) ?: getString(R.string.app_name)
+        setupAppBar(title)
 
         initAdapter()
 
         handleNetworkStates()
     }
 
-    private fun setUpActionBar(title: String) {
+    private fun setupAppBar(title: String) {
         setSupportActionBar(toolbar)
-        supportActionBar?.title = title
+        supportActionBar?.apply {
+            this.title = title
+            setDisplayHomeAsUpEnabled(true)
+        }
     }
 
     private fun initAdapter() {
         val adapter = PhotosAdapter(this::onItemClick)
-        photos_rv.adapter = adapter
+        binding.photosRv.adapter = adapter
 
         viewModel.photosListing.pagedList.observe(this, Observer { photoItems ->
             adapter.submitList(photoItems)

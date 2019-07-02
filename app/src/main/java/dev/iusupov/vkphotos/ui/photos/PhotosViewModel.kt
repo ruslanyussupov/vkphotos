@@ -5,22 +5,22 @@ import androidx.databinding.ObservableBoolean
 import androidx.lifecycle.LiveData
 import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.ViewModel
+import dev.iusupov.vkphotos.App
 import dev.iusupov.vkphotos.NetworkState
-import dev.iusupov.vkphotos.loadBitmapAsync
+import dev.iusupov.vkphotos.utils.loadBitmap
 import dev.iusupov.vkphotos.model.PhotoItem
-import dev.iusupov.vkphotos.parseUrlFromString
-import dev.iusupov.vkphotos.repository.ApiImpl
 import dev.iusupov.vkphotos.repository.DataSource
-import dev.iusupov.vkphotos.repository.Repository
-import kotlinx.coroutines.*
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.cancel
 import timber.log.Timber
-import java.util.concurrent.Executors
-import kotlin.Exception
+import javax.inject.Inject
 
-// TODO: use DI
+
 class PhotosViewModel(ownerId: Int) : ViewModel() {
 
-    private val dataSource: DataSource = Repository(ApiImpl(), Executors.newFixedThreadPool(5))
+    @Inject lateinit var dataSource: DataSource
     val viewModelScope = CoroutineScope(Dispatchers.Main)
 
     private val _openedPhoto = MutableLiveData<Bitmap>()
@@ -36,6 +36,10 @@ class PhotosViewModel(ownerId: Int) : ViewModel() {
     val isLoading = ObservableBoolean()
     val stateText = MutableLiveData<String?>()
 
+    init {
+        App.dataComponent.inject(this)
+    }
+
     fun loadOpenedPhoto(photoItem: PhotoItem) {
         _openedPhoto.value = photoItem.thumbnail
         _openedPhotoState.value = NetworkState.LOADING
@@ -46,16 +50,13 @@ class PhotosViewModel(ownerId: Int) : ViewModel() {
             _openedPhoto.postValue(photoItem.thumbnail)
             _openedPhotoState.value = NetworkState.LOADED
         } else {
-            parseUrlFromString(url)?.let {
-                try {
-                    viewModelScope.launch {
-                        val result = loadBitmapAsync(it).await()
-                        _openedPhoto.postValue(result)
-                        _openedPhotoState.postValue(NetworkState.LOADED)
-                    }
-                } catch (error: Exception) {
-                    val message = error.message ?: "Something went wrong."
-                    _openedPhotoState.postValue(NetworkState.error(message))
+            viewModelScope.launch {
+                val bitmap = loadBitmap(url)
+                if (bitmap == null) {
+                    _openedPhotoState.postValue(NetworkState.error("Can't load image."))
+                } else {
+                    _openedPhoto.postValue(bitmap)
+                    _openedPhotoState.postValue(NetworkState.LOADED)
                 }
             }
         }

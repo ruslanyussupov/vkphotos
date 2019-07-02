@@ -23,7 +23,7 @@ class FriendsDataSourceTest {
     val instantExecutor = InstantTaskExecutorRule()
 
     private val fakeApi = FakeApi()
-    private val dataSource = FriendsDataSource(api = fakeApi, coroutineScope = CoroutineScope(Dispatchers.Main))
+    private val dataSource = FriendsDataSource(coroutineScope = CoroutineScope(Dispatchers.Main), api = fakeApi)
 
     @ObsoleteCoroutinesApi
     @ExperimentalCoroutinesApi
@@ -195,7 +195,7 @@ class FriendsDataSourceTest {
         assertThat(errorMsg, `is`(ERROR_MSG))
 
         fakeApi.error = null
-        dataSource.retry?.invoke()
+        dataSource.retryFailed()
 
         state = dataSource.loadMoreNetworkState.value?.state
 
@@ -225,7 +225,7 @@ class FriendsDataSourceTest {
         assertThat(errorMsg, `is`(ERROR_MSG))
 
         fakeApi.error = null
-        dataSource.retry?.invoke()
+        dataSource.retryFailed()
 
         state = dataSource.loadMoreNetworkState.value?.state
 

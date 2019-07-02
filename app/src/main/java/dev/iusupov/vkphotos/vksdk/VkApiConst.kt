@@ -1,4 +1,4 @@
-package dev.iusupov.vkphotos
+package dev.iusupov.vkphotos.vksdk
 
 const val PARAM_USER_ID = "user_id"
 const val PARAM_ORDER = "order"

@@ -36,6 +36,7 @@ dependencies {
     def lifecycle_version = "2.0.0"
     def coroutines_version = "1.2.1"
     def androidx_test_version = "1.2.0"
+    def dagger_version = "2.23.2"
 
     implementation fileTree(dir: 'libs', include: ['*.jar'])
     implementation "org.jetbrains.kotlin:kotlin-stdlib-jdk7:$kotlin_version"
@@ -48,6 +49,9 @@ dependencies {
     implementation "androidx.lifecycle:lifecycle-extensions:$lifecycle_version"
     implementation 'com.vk:androidsdk:2.1.0'
     implementation 'com.jakewharton.timber:timber:4.7.1'
+
+    implementation "com.google.dagger:dagger:$dagger_version"
+    kapt "com.google.dagger:dagger-compiler:$dagger_version"
 
     testImplementation 'junit:junit:4.12'
     testImplementation "androidx.test:core:$androidx_test_version"

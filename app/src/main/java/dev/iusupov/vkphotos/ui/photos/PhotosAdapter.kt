@@ -75,7 +75,11 @@ class PhotosAdapter(private var onItemClick: ((photoItem: PhotoItem) -> Unit)?)
     class PhotoViewHolder(view: View) : RecyclerView.ViewHolder(view) {
 
         fun bind(photoItem: PhotoItem) {
-            itemView.photo.setImageBitmap(photoItem.thumbnail)
+            if (photoItem.thumbnail == null) {
+                itemView.photo.setImageResource(R.drawable.error_photo_placeholder)
+            } else {
+                itemView.photo.setImageBitmap(photoItem.thumbnail)
+            }
         }
     }
 

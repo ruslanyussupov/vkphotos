@@ -13,27 +13,31 @@ import dev.iusupov.vkphotos.*
 import dev.iusupov.vkphotos.databinding.ActivityFriendsBinding
 import dev.iusupov.vkphotos.ext.getViewModel
 import dev.iusupov.vkphotos.model.User
-import dev.iusupov.vkphotos.ui.MainActivity
+import dev.iusupov.vkphotos.ui.LogInActivity
 import dev.iusupov.vkphotos.ui.photos.PhotosActivity
+import dev.iusupov.vkphotos.utils.hasNetworkConnection
+import dev.iusupov.vkphotos.vksdk.ERROR_CODE_NO_DATA
+import dev.iusupov.vkphotos.vksdk.ERROR_CODE_PRIVATE_PROFILE
 import kotlinx.android.synthetic.main.activity_friends.*
 import kotlinx.android.synthetic.main.toolbar.*
 
 
 class FriendsActivity : AppCompatActivity() {
 
-    private val viewModel by lazy {
-        getViewModel<FriendsViewModel>()
-    }
+    private lateinit var viewModel: FriendsViewModel
+    private lateinit var binding: ActivityFriendsBinding
     private lateinit var adapter: UserAdapter
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
-        val binding: ActivityFriendsBinding = DataBindingUtil.setContentView(this, R.layout.activity_friends)
+        binding = DataBindingUtil.setContentView(this, R.layout.activity_friends)
+        viewModel = getViewModel()
+
         binding.lifecycleOwner = this
         binding.viewModel = viewModel
 
-        setUpActionBar()
+        setupAppBar()
 
         initAdapter()
 
@@ -56,14 +60,14 @@ class FriendsActivity : AppCompatActivity() {
         }
     }
 
-    private fun setUpActionBar() {
+    private fun setupAppBar() {
         setSupportActionBar(toolbar)
         supportActionBar?.title = getString(R.string.app_name)
     }
 
     private fun initAdapter() {
-        adapter = UserAdapter(viewModel.viewModelScope, this::onUserClick)
-        friends_rv.adapter = adapter
+        adapter = UserAdapter(viewModel.viewModelScope, viewModel.storageUtils, this::onUserClick)
+        binding.friendsRv.adapter = adapter
 
         viewModel.friendsListing.pagedList.observe(this, Observer { users ->
             adapter.submitList(users)
@@ -130,7 +134,7 @@ class FriendsActivity : AppCompatActivity() {
     }
 
     private fun launchMainActivity() {
-        val intent = Intent(this, MainActivity::class.java)
+        val intent = Intent(this, LogInActivity::class.java)
         startActivity(intent)
     }
 

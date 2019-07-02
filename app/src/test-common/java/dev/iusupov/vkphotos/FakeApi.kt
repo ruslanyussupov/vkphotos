@@ -18,7 +18,7 @@ class FakeApi(private val count: Int = 100,
         }
     }
 
-    override fun fetchFriends(userId: Int, count: Int, offset: Int): FriendsResponse {
+    override suspend fun fetchFriends(userId: Int, count: Int, offset: Int): FriendsResponse {
         error?.let { error ->
             if (withRecovery) {
                 if (fetchingFriendsThrownErrors < 2) {
@@ -35,7 +35,7 @@ class FakeApi(private val count: Int = 100,
         return FriendsResponse(count, result)
     }
 
-    override fun fetchPhotos(ownerId: Int, count: Int, offset: Int): PhotosResponse {
+    override suspend fun fetchPhotos(ownerId: Int, count: Int, offset: Int): PhotosResponse {
         TODO("not implemented")
     }
 }

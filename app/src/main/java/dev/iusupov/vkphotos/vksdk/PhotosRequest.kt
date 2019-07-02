@@ -1,4 +1,4 @@
-package dev.iusupov.vkphotos
+package dev.iusupov.vkphotos.vksdk
 
 import com.vk.api.sdk.requests.VKRequest
 import dev.iusupov.vkphotos.ext.parseToPhoto

@@ -5,7 +5,7 @@ import dev.iusupov.vkphotos.model.PhotosResponse
 
 interface Api {
 
-    fun fetchFriends(userId: Int = -1, count: Int, offset: Int): FriendsResponse
+    suspend fun fetchFriends(userId: Int = -1, count: Int, offset: Int): FriendsResponse
 
-    fun fetchPhotos(ownerId: Int, count: Int, offset: Int): PhotosResponse
+    suspend fun fetchPhotos(ownerId: Int, count: Int, offset: Int): PhotosResponse
 }

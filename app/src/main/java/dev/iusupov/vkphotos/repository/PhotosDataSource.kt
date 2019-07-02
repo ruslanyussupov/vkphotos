@@ -7,23 +7,23 @@ import com.vk.api.sdk.exceptions.VKApiExecutionException
 import dev.iusupov.vkphotos.*
 import dev.iusupov.vkphotos.model.Photo
 import dev.iusupov.vkphotos.model.PhotoItem
-import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.isActive
-import kotlinx.coroutines.runBlocking
-import kotlinx.coroutines.launch
-import kotlinx.coroutines.delay
+import dev.iusupov.vkphotos.utils.StorageUtils
+import dev.iusupov.vkphotos.utils.loadBitmapWithCaching
+import dev.iusupov.vkphotos.vksdk.ERROR_CODE_NO_DATA
+import dev.iusupov.vkphotos.vksdk.ERROR_CODE_PRIVATE_PROFILE
+import kotlinx.coroutines.*
 import timber.log.Timber
 
 class PhotosDataSource(private val ownerId: Int,
                        private val api: Api,
+                       private val storageUtils: StorageUtils,
                        private val coroutineScope: CoroutineScope) : PositionalDataSource<PhotoItem>() {
 
     private val _loadMoreNetworkState = MutableLiveData<NetworkState>()
     private val _loadInitialNetworkState = MutableLiveData<NetworkState>()
+    private var retry: (() -> Unit)? = null
     val loadMoreNetworkState: LiveData<NetworkState> = _loadMoreNetworkState
     val loadInitialNetworkState: LiveData<NetworkState> = _loadInitialNetworkState
-    var retry: (() -> Unit)? = null
 
     override fun loadInitial(params: LoadInitialParams, callback: LoadInitialCallback<PhotoItem>) {
         val count = params.requestedLoadSize
@@ -44,7 +44,7 @@ class PhotosDataSource(private val ownerId: Int,
         runBlocking {
             _loadInitialNetworkState.postValue(NetworkState.LOADING)
 
-            coroutineScope.launch(Dispatchers.IO) {
+            coroutineScope.launch {
                 repeat(3) { attempt ->
                     val delayInMillis = 5_000L * attempt
                     delay(delayInMillis)
@@ -57,7 +57,9 @@ class PhotosDataSource(private val ownerId: Int,
                         retry = null
                         callback.onResult(photoItems, offset, result.count)
                         if (photoItems.isEmpty()) {
-                            _loadInitialNetworkState.postValue(NetworkState.error("No data.", ERROR_CODE_NO_DATA))
+                            _loadInitialNetworkState.postValue(NetworkState.error("No data.",
+                                ERROR_CODE_NO_DATA
+                            ))
                         } else {
                             _loadInitialNetworkState.postValue(NetworkState.LOADED)
                         }
@@ -72,11 +74,9 @@ class PhotosDataSource(private val ownerId: Int,
                             retry = { requestInitial(count, offset, callback) }
                             _loadInitialNetworkState.postValue(NetworkState.error(errorMsg, error.code))
                             return@launch
-                        } else {
-                            if (attempt == 2) {
-                                retry = { requestInitial(count, offset, callback) }
-                                _loadInitialNetworkState.postValue(NetworkState.error(errorMsg, error.code))
-                            }
+                        } else if (attempt == 2) {
+                            retry = { requestInitial(count, offset, callback) }
+                            _loadInitialNetworkState.postValue(NetworkState.error(errorMsg, error.code))
                         }
 
                     } catch (error: Exception) {
@@ -100,7 +100,7 @@ class PhotosDataSource(private val ownerId: Int,
         runBlocking {
             _loadMoreNetworkState.postValue(NetworkState.LOADING)
 
-            coroutineScope.launch(Dispatchers.IO) {
+            coroutineScope.launch {
                 repeat(3) { attempt ->
                     val delayInMillis = 5_000L * attempt
                     delay(delayInMillis)
@@ -136,11 +136,13 @@ class PhotosDataSource(private val ownerId: Int,
     }
 
     private suspend fun convertToPhotoItems(photos: List<Photo>): List<PhotoItem> {
-        val deferredBitmaps = photos.map { photo ->
-            val url = photo.sizes["q"]?.url ?: photo.sizes["x"]?.url ?: photo.sizes["m"]?.url ?: return@map null
+        val deferredBitmaps = supervisorScope {
+            photos.map { photo ->
+                val url = photo.sizes["q"]?.url ?: photo.sizes["x"]?.url ?: photo.sizes["m"]?.url ?: return@map null
 
-            parseUrlFromString(url)?.let {
-                coroutineScope.loadBitmapAsync(it)
+                async {
+                    loadBitmapWithCaching(url, storageUtils)
+                }
             }
         }
 
@@ -154,5 +156,9 @@ class PhotosDataSource(private val ownerId: Int,
                     PhotoItem(id, bitmap, originalUrl, text, date, reposts, likes)
                 }
             }
+    }
+
+    fun retryFailed() {
+        retry?.invoke()
     }
 }

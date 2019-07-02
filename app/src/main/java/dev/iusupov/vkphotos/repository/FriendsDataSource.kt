@@ -4,7 +4,7 @@ import androidx.lifecycle.LiveData
 import androidx.lifecycle.MutableLiveData
 import androidx.paging.PositionalDataSource
 import com.vk.api.sdk.exceptions.VKApiExecutionException
-import dev.iusupov.vkphotos.ERROR_CODE_NO_DATA
+import dev.iusupov.vkphotos.vksdk.ERROR_CODE_NO_DATA
 import dev.iusupov.vkphotos.NetworkState
 import dev.iusupov.vkphotos.model.User
 import kotlinx.coroutines.CoroutineScope
@@ -12,7 +12,6 @@ import kotlinx.coroutines.isActive
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.delay
-import kotlinx.coroutines.Dispatchers
 import timber.log.Timber
 
 
@@ -22,9 +21,9 @@ class FriendsDataSource(private val userId: Int = -1,
 
     private val _loadMoreNetworkState = MutableLiveData<NetworkState>()
     private val _loadInitialNetworkState = MutableLiveData<NetworkState>()
+    private var retry: (() -> Unit)? = null
     val loadMoreNetworkState: LiveData<NetworkState> = _loadMoreNetworkState
     val loadInitialNetworkState: LiveData<NetworkState> = _loadInitialNetworkState
-    var retry: (() -> Unit)? = null
 
     override fun loadInitial(params: LoadInitialParams, callback: LoadInitialCallback<User>) {
         val count = params.requestedLoadSize
@@ -45,7 +44,7 @@ class FriendsDataSource(private val userId: Int = -1,
         runBlocking {
             _loadInitialNetworkState.postValue(NetworkState.LOADING)
 
-            coroutineScope.launch(Dispatchers.IO) {
+            coroutineScope.launch {
                 repeat(3) { attempt ->
                     val delayInMillis = (5_000L * attempt)
                     delay(delayInMillis)
@@ -56,7 +55,9 @@ class FriendsDataSource(private val userId: Int = -1,
                         retry = null
                         callback.onResult(result.users, offset, result.count)
                         if (result.users.isEmpty()) {
-                            _loadInitialNetworkState.postValue(NetworkState.error("No data.", ERROR_CODE_NO_DATA))
+                            _loadInitialNetworkState.postValue(NetworkState.error("No data.",
+                                ERROR_CODE_NO_DATA
+                            ))
                         } else {
                             _loadInitialNetworkState.postValue(NetworkState.LOADED)
                         }
@@ -89,7 +90,7 @@ class FriendsDataSource(private val userId: Int = -1,
         runBlocking {
             _loadMoreNetworkState.postValue(NetworkState.LOADING)
 
-            coroutineScope.launch(Dispatchers.IO) {
+            coroutineScope.launch {
                 repeat(3) { attempt ->
                     val delayInMillis = 5_000L * attempt
                     delay(delayInMillis)
@@ -120,5 +121,9 @@ class FriendsDataSource(private val userId: Int = -1,
                 }
             }.join()
         }
+    }
+
+    fun retryFailed() {
+        retry?.invoke()
     }
 }

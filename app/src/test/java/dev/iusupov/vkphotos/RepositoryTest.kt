@@ -4,6 +4,7 @@ import androidx.arch.core.executor.testing.InstantTaskExecutorRule
 import androidx.paging.PagedList
 import dev.iusupov.vkphotos.model.User
 import dev.iusupov.vkphotos.repository.Repository
+import dev.iusupov.vkphotos.utils.StorageUtils
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ObsoleteCoroutinesApi
@@ -24,10 +25,11 @@ class RepositoryTest {
     @get:Rule // used to make all live data calls sync
     val instantExecutor = InstantTaskExecutorRule()
 
-    private val fakeApi = FakeApi()
+    private lateinit var fakeApi: FakeApi
+    private  lateinit var fakeStorageUtils: StorageUtils
     private val networkExecutor = Executor { command -> command.run() }
     private val coroutineScope = CoroutineScope(Dispatchers.Main)
-    private val repository = Repository(fakeApi, networkExecutor)
+    private val repository = Repository(fakeApi, fakeStorageUtils, networkExecutor)
 
     @ObsoleteCoroutinesApi
     @ExperimentalCoroutinesApi

@@ -13,6 +13,6 @@
         android:layout_height="180dp"
         android:scaleType="centerCrop"
         android:contentDescription="@string/photo_content_desc"
-        android:background="@color/grey_10"/>
+        android:background="@color/grey_10" />
 
 </FrameLayout>

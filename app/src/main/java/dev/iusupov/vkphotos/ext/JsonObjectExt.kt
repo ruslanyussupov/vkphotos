@@ -1,8 +1,8 @@
 package dev.iusupov.vkphotos.ext
 
-import dev.iusupov.vkphotos.*
 import dev.iusupov.vkphotos.model.Photo
 import dev.iusupov.vkphotos.model.User
+import dev.iusupov.vkphotos.vksdk.*
 import org.json.JSONObject
 
 fun JSONObject.parseToUser(): User {

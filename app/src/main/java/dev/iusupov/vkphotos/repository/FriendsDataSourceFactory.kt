@@ -5,7 +5,6 @@ import androidx.lifecycle.MutableLiveData
 import androidx.paging.DataSource
 import dev.iusupov.vkphotos.model.User
 import kotlinx.coroutines.CoroutineScope
-import timber.log.Timber
 
 class FriendsDataSourceFactory(private val userId: Int = -1,
                                private val api: Api,
@@ -15,7 +14,6 @@ class FriendsDataSourceFactory(private val userId: Int = -1,
     val source: LiveData<FriendsDataSource> = _source
 
     override fun create(): DataSource<Int, User> {
-        Timber.d("Creating friends positional data source...")
         val friendsDataSource = FriendsDataSource(userId, api, coroutineScope)
         _source.postValue(friendsDataSource)
         return friendsDataSource
