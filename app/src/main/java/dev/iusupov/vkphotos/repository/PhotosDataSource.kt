@@ -8,8 +8,6 @@ import dev.iusupov.vkphotos.*
 import dev.iusupov.vkphotos.model.Photo
 import dev.iusupov.vkphotos.model.PhotoItem
 import dev.iusupov.vkphotos.utils.NetworkUtils
-import dev.iusupov.vkphotos.vksdk.ERROR_CODE_NO_DATA
-import dev.iusupov.vkphotos.vksdk.ERROR_CODE_PRIVATE_PROFILE
 import kotlinx.coroutines.*
 import timber.log.Timber
 import java.util.LinkedList
@@ -18,8 +16,7 @@ import java.util.LinkedList
 class PhotosDataSource(private val ownerId: Int,
                        private val api: Api,
                        private val networkUtils: NetworkUtils,
-                       private val coroutineScope: CoroutineScope,
-                       private val networkDispatcher: CoroutineDispatcher) : PositionalDataSource<PhotoItem>() {
+                       private val coroutineScope: CoroutineScope) : PositionalDataSource<PhotoItem>() {
 
     val failed = LinkedList<suspend () -> Unit>()
     private val _loadMoreNetworkState = MutableLiveData<NetworkState>()
@@ -29,8 +26,9 @@ class PhotosDataSource(private val ownerId: Int,
 
     val retryFailed = {
         while (failed.isNotEmpty()) {
+            val last = failed.removeLast()
             coroutineScope.launch {
-                failed.removeLast().invoke()
+                last.invoke()
             }
         }
     }
@@ -53,26 +51,28 @@ class PhotosDataSource(private val ownerId: Int,
 
     suspend fun requestInitial(count: Int, offset: Int, callback: LoadInitialCallback<PhotoItem>) {
         if (!coroutineScope.isActive) return
+
         Timber.d("Request initial: count=$count, offset=$offset.")
 
         _loadInitialNetworkState.postValue(NetworkState.LOADING)
 
         repeat(3) { attempt ->
-            val delayInMillis = 5_000L * attempt
+            val delayInMillis = 2_000L * attempt
             delay(delayInMillis)
 
             try {
-                val result = withContext(networkDispatcher) {
-                    api.fetchPhotos(ownerId, count, offset)
-                }
+                val result = api.fetchPhotos(ownerId, count, offset)
                 Timber.i("Requesting photos completed: count=$count, offset=$offset, result=${result.photos.size}: ${result.photos}")
                 val photoItems = convertToPhotoItems(result.photos)
                 Timber.i("Converted to photo items: size=${photoItems.size}")
                 callback.onResult(photoItems, offset, result.count)
                 if (photoItems.isEmpty()) {
-                    _loadInitialNetworkState.postValue(NetworkState.error("No data.",
-                        ERROR_CODE_NO_DATA
-                    ))
+                    _loadInitialNetworkState.postValue(
+                        NetworkState.error(
+                            message = "No data.",
+                            code = Error.ERROR_CODE_NO_DATA
+                        )
+                    )
                 } else {
                     _loadInitialNetworkState.postValue(NetworkState.LOADED)
                 }
@@ -83,7 +83,7 @@ class PhotosDataSource(private val ownerId: Int,
 
                 val errorMsg = error.errorMsg ?: "Requesting photos is failed."
 
-                if (error.code == ERROR_CODE_PRIVATE_PROFILE) {
+                if (error.code == Error.ERROR_CODE_PRIVATE_PROFILE) {
                     _loadInitialNetworkState.postValue(NetworkState.error(errorMsg, error.code))
                     return
                 } else if (attempt == 2) {
@@ -110,13 +110,11 @@ class PhotosDataSource(private val ownerId: Int,
         _loadMoreNetworkState.postValue(NetworkState.LOADING)
 
         repeat(3) { attempt ->
-            val delayInMillis = 5_000L * attempt
+            val delayInMillis = 2_000L * attempt
             delay(delayInMillis)
 
             try {
-                val result = withContext(networkDispatcher) {
-                    api.fetchPhotos(ownerId, count, offset)
-                }
+                val result = api.fetchPhotos(ownerId, count, offset)
                 Timber.i("Requesting photos completed: count=$count, offset=$offset, result=${result.photos.size}: ${result.photos}")
                 val photoItems = convertToPhotoItems(result.photos)
                 Timber.i("Converted to photo items: size=${photoItems.size}")

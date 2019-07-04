@@ -17,4 +17,10 @@ enum class State {
 }
 
 data class Error(val message: String,
-                 val code: Int)
+                 val code: Int) {
+
+    companion object {
+        const val ERROR_CODE_PRIVATE_PROFILE = 30
+        const val ERROR_CODE_NO_DATA = 404
+    }
+}

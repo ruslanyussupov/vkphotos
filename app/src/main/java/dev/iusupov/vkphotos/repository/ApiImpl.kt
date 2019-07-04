@@ -10,7 +10,7 @@ import kotlinx.coroutines.withContext
 
 class ApiImpl : Api {
 
-    override suspend fun fetchFriends(userId: Int, count: Int, offset: Int): FriendsResponse {
+    override suspend fun fetchFriends(count: Int, offset: Int, userId: Int): FriendsResponse {
         return withContext(Dispatchers.IO) {
             val request = FriendsRequest(count, offset, userId)
             VK.executeSync(request)

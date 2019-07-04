@@ -13,7 +13,7 @@
     <string name="photo_content_desc">Photo from user\'s album.</string>
     <string name="default_try_again_message">Something went wrong. Please try again.</string>
     <string name="default_error_message">Something went wrong…</string>
-    <string name="check_connection_and_retry">Please check the connection and try again.</string>
+    <string name="check_connection_and_retry">Please check the internet connection and try again.</string>
     <string name="photos_empty_state">There are no photos…</string>
     <string name="friends_empty_state">There are no friends…</string>
     <string name="profile_is_private">Profile is private.</string>

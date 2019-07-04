@@ -5,7 +5,6 @@ import androidx.paging.PositionalDataSource
 import dev.iusupov.vkphotos.model.User
 import dev.iusupov.vkphotos.repository.FriendsDataSource
 import kotlinx.coroutines.*
-import kotlinx.coroutines.test.TestCoroutineDispatcher
 import kotlinx.coroutines.test.runBlockingTest
 import kotlinx.coroutines.test.setMain
 import org.hamcrest.CoreMatchers.`is`
@@ -22,13 +21,13 @@ class FriendsDataSourceTest {
     val instantExecutor = InstantTaskExecutorRule()
 
     private val coroutineScope = CoroutineScope(Dispatchers.Main)
-    private val testCoroutineDispatcher = TestCoroutineDispatcher()
     private val mainThreadSurrogate = newSingleThreadContext("UI thread")
     private val fakeApi = FakeApi()
+
     private val dataSource = FriendsDataSource(
-        coroutineScope = coroutineScope,
+        userId = -1,
         api = fakeApi,
-        networkDispatcher = testCoroutineDispatcher)
+        coroutineScope = coroutineScope)
 
     @Before
     fun setup() {

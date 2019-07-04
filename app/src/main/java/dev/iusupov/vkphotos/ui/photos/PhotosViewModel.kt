@@ -33,7 +33,10 @@ class PhotosViewModel(ownerId: Int) : ViewModel() {
     val openedPhotoState: LiveData<NetworkState> = _openedPhotoState
 
     val photosListing by lazy {
-        dataSource.fetchPhotos(ownerId = ownerId, coroutineScope = viewModelScope)
+        dataSource.fetchPhotos(
+            ownerId = ownerId,
+            coroutineScope = viewModelScope
+        )
     }
 
     val isLoading = ObservableBoolean()

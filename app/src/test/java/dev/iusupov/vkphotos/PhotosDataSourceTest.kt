@@ -26,13 +26,12 @@ class PhotosDataSourceTest {
     private val testCoroutineDispatcher = TestCoroutineDispatcher()
     private val mainThreadSurrogate = newSingleThreadContext("UI thread")
     private val fakeApi = FakeApi()
-    private val networkUtils = NetworkUtils(storageUtils = FakeStorageUtils())
+    private val networkUtils = NetworkUtils(FakeStorageUtils())
     private val dataSource = PhotosDataSource(
         ownerId = 1,
         api = fakeApi,
         networkUtils = networkUtils,
-        coroutineScope = coroutineScope,
-        networkDispatcher = testCoroutineDispatcher)
+        coroutineScope = coroutineScope)
 
     @Before
     fun setup() {

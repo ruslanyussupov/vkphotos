@@ -52,7 +52,7 @@ class FakeApi(private val count: Int = 100,
         }
     }
 
-    override suspend fun fetchFriends(userId: Int, count: Int, offset: Int): FriendsResponse {
+    override suspend fun fetchFriends(count: Int, offset: Int, userId: Int): FriendsResponse {
         error?.let { error ->
             if (withRecovery) {
                 if (fetchingFriendsThrownErrors < 2) {

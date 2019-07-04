@@ -4,7 +4,7 @@ import androidx.lifecycle.LiveData
 import androidx.lifecycle.MutableLiveData
 import androidx.paging.PositionalDataSource
 import com.vk.api.sdk.exceptions.VKApiExecutionException
-import dev.iusupov.vkphotos.vksdk.ERROR_CODE_NO_DATA
+import dev.iusupov.vkphotos.Error
 import dev.iusupov.vkphotos.NetworkState
 import dev.iusupov.vkphotos.model.User
 import kotlinx.coroutines.*
@@ -12,10 +12,9 @@ import timber.log.Timber
 import java.util.LinkedList
 
 // TODO: Maybe it's better to move requesting into independent class
-class FriendsDataSource(private val userId: Int = -1,
+class FriendsDataSource(private val userId: Int,
                         private val api: Api,
-                        private val coroutineScope: CoroutineScope,
-                        private val networkDispatcher: CoroutineDispatcher) : PositionalDataSource<User>() {
+                        private val coroutineScope: CoroutineScope) : PositionalDataSource<User>() {
 
     private val _loadMoreNetworkState = MutableLiveData<NetworkState>()
     private val _loadInitialNetworkState = MutableLiveData<NetworkState>()
@@ -25,8 +24,9 @@ class FriendsDataSource(private val userId: Int = -1,
 
     val retryFailed = {
         while (failed.isNotEmpty()) {
+            val last = failed.removeLast()
             coroutineScope.launch {
-                failed.removeLast().invoke()
+                last.invoke()
             }
         }
     }
@@ -56,19 +56,20 @@ class FriendsDataSource(private val userId: Int = -1,
         _loadInitialNetworkState.postValue(NetworkState.LOADING)
 
         repeat(3) { attempt ->
-            val delayInMillis = (5_000L * attempt)
+            val delayInMillis = (2_000L * attempt)
             delay(delayInMillis)
 
             try {
-                val result = withContext(networkDispatcher) {
-                    api.fetchFriends(userId, count, offset)
-                }
+                val result = api.fetchFriends(count, offset, userId)
                 Timber.i("Requesting friends completed: count=$count, offset=$offset, result=${result.users.size}: ${result.users}")
                 callback.onResult(result.users, offset, result.count)
                 if (result.users.isEmpty()) {
-                    _loadInitialNetworkState.postValue(NetworkState.error("No data.",
-                        ERROR_CODE_NO_DATA
-                    ))
+                    _loadInitialNetworkState.postValue(
+                        NetworkState.error(
+                            message = "No data.",
+                            code = Error.ERROR_CODE_NO_DATA
+                        )
+                    )
                 } else {
                     _loadInitialNetworkState.postValue(NetworkState.LOADED)
                 }
@@ -99,13 +100,11 @@ class FriendsDataSource(private val userId: Int = -1,
         _loadMoreNetworkState.postValue(NetworkState.LOADING)
 
         repeat(3) { attempt ->
-            val delayInMillis = 5_000L * attempt
+            val delayInMillis = 2_000L * attempt
             delay(delayInMillis)
 
             try {
-                val result = withContext(networkDispatcher) {
-                    api.fetchFriends(userId, count, offset)
-                }
+                val result = api.fetchFriends(count, offset, userId)
                 Timber.i("Requesting friends completed: count=$count, offset=$offset, result=${result.users.size}: ${result.users}")
                 callback.onResult(result.users)
                 _loadMoreNetworkState.postValue(NetworkState.LOADED)

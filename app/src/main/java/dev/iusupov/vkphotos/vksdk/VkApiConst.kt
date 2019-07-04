@@ -33,6 +33,3 @@ const val JSON_LIKES = "likes"
 const val JSON_REPOSTS = "reposts"
 const val JSON_SIZES = "sizes"
 const val JSON_ALBUM_ID = "album_id"
-
-const val ERROR_CODE_PRIVATE_PROFILE = 30
-const val ERROR_CODE_NO_DATA = 404

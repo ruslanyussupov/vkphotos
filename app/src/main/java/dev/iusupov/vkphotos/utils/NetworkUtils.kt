@@ -56,7 +56,7 @@ class NetworkUtils(private val storageUtils: StorageUtils) {
 
     /**
      * Gets a byte array from the given URL.
-     * If the loading fails it'll retry it two times after 3 and 6 seconds respectively.
+     * If the loading fails it'll retry it two times after 2 and 4 seconds respectively.
      *
      * @return ByteArray?
      *
@@ -68,7 +68,7 @@ class NetworkUtils(private val storageUtils: StorageUtils) {
         var result: ByteArray? = null
 
         repeat(3) { attempt ->
-            val delayInMillis = 3_000L * attempt
+            val delayInMillis = 2_000L * attempt
             delay(delayInMillis)
 
             try {

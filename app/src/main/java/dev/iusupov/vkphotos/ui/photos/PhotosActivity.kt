@@ -11,10 +11,9 @@ import dev.iusupov.vkphotos.databinding.ActivityPhotosBinding
 import dev.iusupov.vkphotos.ext.getViewModel
 import dev.iusupov.vkphotos.model.PhotoItem
 import dev.iusupov.vkphotos.utils.hasNetworkConnection
-import dev.iusupov.vkphotos.vksdk.ERROR_CODE_NO_DATA
-import dev.iusupov.vkphotos.vksdk.ERROR_CODE_PRIVATE_PROFILE
 import kotlinx.android.synthetic.main.activity_photos.root
 import kotlinx.android.synthetic.main.toolbar.*
+import timber.log.Timber
 
 class PhotosActivity : AppCompatActivity() {
 
@@ -69,24 +68,24 @@ class PhotosActivity : AppCompatActivity() {
             when (networkState.state) {
                 State.ERROR -> {
                     when {
-                        networkState.error?.code == ERROR_CODE_PRIVATE_PROFILE -> {
+                        networkState.error?.code == Error.ERROR_CODE_PRIVATE_PROFILE -> {
                             viewModel.isLoading.set(false)
                             viewModel.stateText.value = getString(R.string.profile_is_private)
                         }
-                        networkState.error?.code == ERROR_CODE_NO_DATA -> {
+                        networkState.error?.code == Error.ERROR_CODE_NO_DATA -> {
                             viewModel.isLoading.set(false)
                             viewModel.stateText.value = getString(R.string.photos_empty_state)
                         }
-                        hasNetworkConnection(this) -> {
+                        !hasNetworkConnection(this) -> {
+                            viewModel.isLoading.set(false)
+                            viewModel.stateText.value = getString(R.string.no_network_connection)
+                            retryPopUp(getString(R.string.check_connection_and_retry))
+                        }
+                        else -> {
                             val errorMsg = networkState.error?.message ?: getString(R.string.default_error_message)
                             viewModel.stateText.value = errorMsg
                             viewModel.isLoading.set(false)
                             retryPopUp(getString(R.string.default_try_again_message))
-                        }
-                        else -> {
-                            viewModel.isLoading.set(false)
-                            viewModel.stateText.value = getString(R.string.no_network_connection)
-                            retryPopUp(getString(R.string.check_connection_and_retry))
                         }
                     }
                 }
@@ -102,12 +101,10 @@ class PhotosActivity : AppCompatActivity() {
         })
 
         viewModel.photosListing.loadMoreNetworkState.observe(this, Observer { networkState ->
-            if (networkState.state == State.ERROR) {
-                if (hasNetworkConnection(this)) {
-                    retryPopUp(getString(R.string.default_try_again_message))
-                } else {
-                    retryPopUp(getString(R.string.check_connection_and_retry))
-                }
+            if (!hasNetworkConnection(this)) {
+                retryPopUp(getString(R.string.check_connection_and_retry))
+            } else {
+                retryPopUp(getString(R.string.default_try_again_message))
             }
         })
     }
@@ -120,6 +117,7 @@ class PhotosActivity : AppCompatActivity() {
 
     private fun retryPopUp(message: String) {
         Snackbar.make(root, message, Snackbar.LENGTH_INDEFINITE).setAction(getString(R.string.retry)) {
+            Timber.d("retry = ${viewModel.retry}")
             viewModel.retry?.invoke()
         }.show()
     }
