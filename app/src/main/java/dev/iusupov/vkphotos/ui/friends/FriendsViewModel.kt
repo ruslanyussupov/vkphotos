@@ -25,7 +25,7 @@ class FriendsViewModel : ViewModel() {
     }
 
     val friendsListing by lazy {
-        dataSource.fetchFriends(userId = 6492, coroutineScope = viewModelScope)
+        dataSource.fetchFriends(coroutineScope = viewModelScope)
     }
 
     val isLoading =  ObservableBoolean()
