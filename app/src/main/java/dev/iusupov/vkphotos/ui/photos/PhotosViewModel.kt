@@ -7,9 +7,9 @@ import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.ViewModel
 import dev.iusupov.vkphotos.App
 import dev.iusupov.vkphotos.NetworkState
-import dev.iusupov.vkphotos.utils.loadBitmap
 import dev.iusupov.vkphotos.model.PhotoItem
 import dev.iusupov.vkphotos.repository.DataSource
+import dev.iusupov.vkphotos.utils.NetworkUtils
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -21,7 +21,10 @@ import javax.inject.Inject
 class PhotosViewModel(ownerId: Int) : ViewModel() {
 
     @Inject lateinit var dataSource: DataSource
+    @Inject lateinit var networkUtils: NetworkUtils
+
     val viewModelScope = CoroutineScope(Dispatchers.Main)
+    var retry: (() -> Unit)? = null
 
     private val _openedPhoto = MutableLiveData<Bitmap>()
     val openedPhoto: LiveData<Bitmap> = _openedPhoto
@@ -51,7 +54,7 @@ class PhotosViewModel(ownerId: Int) : ViewModel() {
             _openedPhotoState.value = NetworkState.LOADED
         } else {
             viewModelScope.launch {
-                val bitmap = loadBitmap(url)
+                val bitmap = networkUtils.loadBitmap(url)
                 if (bitmap == null) {
                     _openedPhotoState.postValue(NetworkState.error("Can't load image."))
                 } else {

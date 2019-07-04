@@ -2,8 +2,9 @@ package dev.iusupov.vkphotos
 
 import androidx.arch.core.executor.testing.InstantTaskExecutorRule
 import androidx.paging.PositionalDataSource
-import dev.iusupov.vkphotos.model.User
-import dev.iusupov.vkphotos.repository.FriendsDataSource
+import dev.iusupov.vkphotos.model.PhotoItem
+import dev.iusupov.vkphotos.repository.PhotosDataSource
+import dev.iusupov.vkphotos.utils.NetworkUtils
 import kotlinx.coroutines.*
 import kotlinx.coroutines.test.TestCoroutineDispatcher
 import kotlinx.coroutines.test.runBlockingTest
@@ -16,7 +17,7 @@ import org.junit.Test
 
 @ObsoleteCoroutinesApi
 @ExperimentalCoroutinesApi
-class FriendsDataSourceTest {
+class PhotosDataSourceTest {
 
     @get:Rule // used to make all live data calls sync
     val instantExecutor = InstantTaskExecutorRule()
@@ -25,14 +26,19 @@ class FriendsDataSourceTest {
     private val testCoroutineDispatcher = TestCoroutineDispatcher()
     private val mainThreadSurrogate = newSingleThreadContext("UI thread")
     private val fakeApi = FakeApi()
-    private val dataSource = FriendsDataSource(
-        coroutineScope = coroutineScope,
+    private val networkUtils = NetworkUtils(storageUtils = FakeStorageUtils())
+    private val dataSource = PhotosDataSource(
+        ownerId = 1,
         api = fakeApi,
+        networkUtils = networkUtils,
+        coroutineScope = coroutineScope,
         networkDispatcher = testCoroutineDispatcher)
 
     @Before
     fun setup() {
         Dispatchers.setMain(mainThreadSurrogate)
+        networkUtils.swapNetworkDispatcher(testCoroutineDispatcher)
+        networkUtils.swapComputationDispatcher(testCoroutineDispatcher)
     }
 
     @Test
@@ -40,13 +46,12 @@ class FriendsDataSourceTest {
         fakeApi.error = null
 
         val networkStateObserver = LoggingObserver<NetworkState>()
-        val callback = object : PositionalDataSource.LoadInitialCallback<User>() {
-            override fun onResult(data: MutableList<User>, position: Int, totalCount: Int) {
-                val expectedResult = fakeApi.users.take(LOAD_SIZE)
-                assertThat(data, `is`(expectedResult))
+        val callback = object : PositionalDataSource.LoadInitialCallback<PhotoItem>() {
+            override fun onResult(data: MutableList<PhotoItem>, position: Int, totalCount: Int) {
+                assert(!data.isNullOrEmpty())
             }
 
-            override fun onResult(data: MutableList<User>, position: Int) {
+            override fun onResult(data: MutableList<PhotoItem>, position: Int) {
                 TODO("Isn't supposed to be called.")
             }
         }
@@ -63,16 +68,14 @@ class FriendsDataSourceTest {
     fun requestRange() = runBlockingTest {
         fakeApi.error = null
 
-        val offset = 20
         val networkStateObserver = LoggingObserver<NetworkState>()
-        val callback = object : PositionalDataSource.LoadRangeCallback<User>() {
-            override fun onResult(data: MutableList<User>) {
-                val expectedResult = fakeApi.users.subList(offset, offset + LOAD_SIZE)
-                assertThat(data, `is`(expectedResult))
+        val callback = object : PositionalDataSource.LoadRangeCallback<PhotoItem>(){
+            override fun onResult(data: MutableList<PhotoItem>) {
+                assert(!data.isNullOrEmpty())
             }
         }
 
-        dataSource.requestRange(LOAD_SIZE, offset, callback)
+        dataSource.requestRange(LOAD_SIZE, 20, callback)
 
         dataSource.loadMoreNetworkState.observeForever(networkStateObserver)
         val state = networkStateObserver.value?.state
@@ -83,15 +86,14 @@ class FriendsDataSourceTest {
     @Test
     fun requestInitialWithError() = runBlockingTest {
         fakeApi.error = Exception(ERROR_MSG)
-        fakeApi.withRecovery = false
 
         val networkStateObserver = LoggingObserver<NetworkState>()
-        val callback = object : PositionalDataSource.LoadInitialCallback<User>() {
-            override fun onResult(data: MutableList<User>, position: Int, totalCount: Int) {
-                TODO("Isn't supposed to be called.")
+        val callback = object : PositionalDataSource.LoadInitialCallback<PhotoItem>() {
+            override fun onResult(data: MutableList<PhotoItem>, position: Int, totalCount: Int) {
+                assert(data.isNullOrEmpty())
             }
 
-            override fun onResult(data: MutableList<User>, position: Int) {
+            override fun onResult(data: MutableList<PhotoItem>, position: Int) {
                 TODO("Isn't supposed to be called.")
             }
         }
@@ -110,12 +112,11 @@ class FriendsDataSourceTest {
     @Test
     fun requestRangeWithError() = runBlockingTest {
         fakeApi.error = Exception(ERROR_MSG)
-        fakeApi.withRecovery = false
 
         val networkStateObserver = LoggingObserver<NetworkState>()
-        val callback = object : PositionalDataSource.LoadRangeCallback<User>() {
-            override fun onResult(data: MutableList<User>) {
-                TODO("Isn't supposed to be called.")
+        val callback = object : PositionalDataSource.LoadRangeCallback<PhotoItem>() {
+            override fun onResult(data: MutableList<PhotoItem>) {
+                assert(data.isNullOrEmpty())
             }
         }
 
@@ -136,13 +137,12 @@ class FriendsDataSourceTest {
         fakeApi.withRecovery = true
 
         val networkStateObserver = LoggingObserver<NetworkState>()
-        val callback = object : PositionalDataSource.LoadInitialCallback<User>() {
-            override fun onResult(data: MutableList<User>, position: Int, totalCount: Int) {
-                val expectedResult = fakeApi.users.take(20)
-                assertThat(data, `is`(expectedResult))
+        val callback = object : PositionalDataSource.LoadInitialCallback<PhotoItem>() {
+            override fun onResult(data: MutableList<PhotoItem>, position: Int, totalCount: Int) {
+                assert(!data.isNullOrEmpty())
             }
 
-            override fun onResult(data: MutableList<User>, position: Int) {
+            override fun onResult(data: MutableList<PhotoItem>, position: Int) {
                 TODO("Isn't supposed to be called.")
             }
         }
@@ -160,16 +160,14 @@ class FriendsDataSourceTest {
         fakeApi.error = Exception(ERROR_MSG)
         fakeApi.withRecovery = true
 
-        val offset = 20
         val networkStateObserver = LoggingObserver<NetworkState>()
-        val callback = object : PositionalDataSource.LoadRangeCallback<User>() {
-            override fun onResult(data: MutableList<User>) {
-                val expectedResult = fakeApi.users.subList(offset, offset + LOAD_SIZE)
-                assertThat(data, `is`(expectedResult))
+        val callback = object : PositionalDataSource.LoadRangeCallback<PhotoItem>() {
+            override fun onResult(data: MutableList<PhotoItem>) {
+                assert(!data.isNullOrEmpty())
             }
         }
 
-        dataSource.requestRange(LOAD_SIZE, offset, callback)
+        dataSource.requestRange(LOAD_SIZE, 0, callback)
 
         dataSource.loadMoreNetworkState.observeForever(networkStateObserver)
         val state = networkStateObserver.value?.state
@@ -180,16 +178,14 @@ class FriendsDataSourceTest {
     @Test
     fun requestInitialWithRetry() = runBlockingTest {
         fakeApi.error = Exception(ERROR_MSG)
-        fakeApi.withRecovery = false
 
         val networkStateObserver = LoggingObserver<NetworkState>()
-        val callback = object : PositionalDataSource.LoadInitialCallback<User>() {
-            override fun onResult(data: MutableList<User>, position: Int, totalCount: Int) {
-                val expectedResult = fakeApi.users.take(20)
-                assertThat(data, `is`(expectedResult))
+        val callback = object : PositionalDataSource.LoadInitialCallback<PhotoItem>() {
+            override fun onResult(data: MutableList<PhotoItem>, position: Int, totalCount: Int) {
+                assert(!data.isNullOrEmpty())
             }
 
-            override fun onResult(data: MutableList<User>, position: Int) {
+            override fun onResult(data: MutableList<PhotoItem>, position: Int) {
                 TODO("Isn't supposed to be called.")
             }
         }
@@ -217,18 +213,15 @@ class FriendsDataSourceTest {
     @Test
     fun requestRangeWithRetry() = runBlockingTest {
         fakeApi.error = Exception(ERROR_MSG)
-        fakeApi.withRecovery = false
 
-        val offset = 20
         val networkStateObserver = LoggingObserver<NetworkState>()
-        val callback = object : PositionalDataSource.LoadRangeCallback<User>() {
-            override fun onResult(data: MutableList<User>) {
-                val expectedResult = fakeApi.users.subList(offset, offset + LOAD_SIZE)
-                assertThat(data, `is`(expectedResult))
+        val callback = object : PositionalDataSource.LoadRangeCallback<PhotoItem>() {
+            override fun onResult(data: MutableList<PhotoItem>) {
+                assert(!data.isNullOrEmpty())
             }
         }
 
-        dataSource.requestRange(LOAD_SIZE, offset, callback)
+        dataSource.requestRange(LOAD_SIZE, 20, callback)
 
         dataSource.loadMoreNetworkState.observeForever(networkStateObserver)
         var state = networkStateObserver.value?.state
@@ -242,6 +235,7 @@ class FriendsDataSourceTest {
         while (dataSource.failed.isNotEmpty()) {
             dataSource.failed.removeLast().invoke()
         }
+
         state = networkStateObserver.value?.state
 
         assertThat(state, `is`(State.SUCCESS))

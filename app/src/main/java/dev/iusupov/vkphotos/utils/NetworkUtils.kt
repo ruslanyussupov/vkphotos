@@ -4,6 +4,7 @@ import android.content.Context
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
 import android.net.ConnectivityManager
+import androidx.annotation.VisibleForTesting
 import kotlinx.coroutines.*
 import timber.log.Timber
 import java.io.IOException
@@ -12,96 +13,113 @@ import java.net.SocketTimeoutException
 import java.net.URL
 import javax.net.ssl.HttpsURLConnection
 
-suspend fun loadBitmapWithCaching(url: String, storageUtils: StorageUtils): Bitmap? {
-    Timber.i("Start loading bitmap with caching from $url")
+class NetworkUtils(private val storageUtils: StorageUtils) {
 
-    val cache = storageUtils.readFromCache(url)
+    private var networkDispatcher = Dispatchers.IO
+    private var computationDispatcher = Dispatchers.Default
 
-    return if (cache == null || cache.isEmpty()) {
+    // TODO: Make a service responsible for clean up the cache
+    suspend fun loadBitmapWithCaching(url: String): Bitmap? {
+        Timber.i("Start loading bitmap with caching from $url")
+
+        val cache = storageUtils.readFromCache(url)
+
+        return if (cache == null || cache.isEmpty()) {
+            val byteArray = parseUrlFromString(url)?.let { _url ->
+                fetchByteArray(_url)
+            }
+            byteArray?.let { _byteArray ->
+                storageUtils.writeToCache(url, _byteArray)
+                withContext(computationDispatcher) {
+                    BitmapFactory.decodeByteArray(_byteArray, 0, _byteArray.size)
+                }
+            }
+        } else {
+            withContext(computationDispatcher) {
+                BitmapFactory.decodeByteArray(cache, 0, cache.size)
+            }
+        }
+    }
+
+    suspend fun loadBitmap(url: String): Bitmap? {
+        Timber.i("Start loading bitmap from $url")
+
         val byteArray = parseUrlFromString(url)?.let { _url ->
             fetchByteArray(_url)
         }
-        byteArray?.let { _byteArray ->
-            storageUtils.writeToCache(url, _byteArray)
-            withContext(Dispatchers.Default) {
+        return byteArray?.let { _byteArray ->
+            withContext(computationDispatcher) {
                 BitmapFactory.decodeByteArray(_byteArray, 0, _byteArray.size)
             }
         }
-    } else {
-        withContext(Dispatchers.Default) {
-            BitmapFactory.decodeByteArray(cache, 0, cache.size)
+    }
+
+    /**
+     * Gets a byte array from the given URL.
+     * If the loading fails it'll retry it two times after 3 and 6 seconds respectively.
+     *
+     * @return ByteArray?
+     *
+     */
+    suspend fun fetchByteArray(url: URL): ByteArray? {
+        Timber.i("Start fetching bytes from $url")
+
+        var connection: HttpsURLConnection? = null
+        var result: ByteArray? = null
+
+        repeat(3) { attempt ->
+            val delayInMillis = 3_000L * attempt
+            delay(delayInMillis)
+
+            try {
+                connection = establishGetConnection(url)
+                Timber.i("Connection for $url is established")
+                result = withContext(networkDispatcher) {
+                    connection?.inputStream?.use {
+                        it.readBytes()
+                    }
+                }
+                return result
+            } catch (error: Exception) {
+                Timber.e("Error while getting a byte array: attempt=$attempt, url=$url. $error")
+                if (attempt == 2) {
+                    return null
+                }
+            } finally {
+                connection?.disconnect()
+            }
         }
+
+        return result
     }
-}
 
-suspend fun loadBitmap(url: String): Bitmap? {
-    Timber.i("Start loading bitmap from $url")
+    @Throws(IOException::class, SocketTimeoutException::class)
+    private suspend fun establishGetConnection(url: URL): HttpsURLConnection? {
+        return withContext(networkDispatcher) {
+            val connection = url.openConnection() as? HttpsURLConnection
+            connection?.apply {
+                readTimeout = 3_000
+                connectTimeout = 3_000
+                requestMethod = "GET"
+                connect()
 
-    val byteArray = parseUrlFromString(url)?.let { _url ->
-        fetchByteArray(_url)
-    }
-    return byteArray?.let { _byteArray ->
-        withContext(Dispatchers.Default) {
-            BitmapFactory.decodeByteArray(_byteArray, 0, _byteArray.size)
-        }
-    }
-}
-
-/**
- * Gets a byte array from the given URL.
- * If the loading fails it'll retry it two times after 3 and 6 seconds respectively.
- *
- * @return ByteArray?
- *
- */
-suspend fun fetchByteArray(url: URL): ByteArray? {
-    Timber.i("Start fetching bytes from $url")
-
-    var connection: HttpsURLConnection? = null
-    var result: ByteArray? = null
-
-    repeat(3) { attempt ->
-        val delayInMillis = 3_000L * attempt
-        delay(delayInMillis)
-
-        try {
-            connection = establishGetConnection(url)
-            Timber.i("Connection for $url is established")
-            result = withContext(Dispatchers.IO) {
-                connection?.inputStream?.use {
-                    it.readBytes()
+                if (responseCode != HttpsURLConnection.HTTP_OK) {
+                    throw IOException("HTTP error code: $responseCode")
                 }
             }
-            return result
-        } catch (error: Exception) {
-            Timber.e("Error while getting a byte array: attempt=$attempt, url=$url. $error")
-            if (attempt == 2) {
-                return null
-            }
-        } finally {
-            connection?.disconnect()
+
+            connection
         }
     }
 
-    return result
-}
+    @VisibleForTesting
+    fun swapNetworkDispatcher(dispatcher: CoroutineDispatcher) {
+        networkDispatcher = dispatcher
+    }
 
-@Throws(IOException::class, SocketTimeoutException::class)
-private suspend fun establishGetConnection(url: URL): HttpsURLConnection? {
-    return withContext(Dispatchers.IO) {
-        val connection = url.openConnection() as? HttpsURLConnection
-        connection?.apply {
-            readTimeout = 3_000
-            connectTimeout = 3_000
-            requestMethod = "GET"
-            connect()
-
-            if (responseCode != HttpsURLConnection.HTTP_OK) {
-                throw IOException("HTTP error code: $responseCode")
-            }
-        }
-
-        connection
+    @VisibleForTesting
+    fun swapComputationDispatcher(dispatcher: CoroutineDispatcher) {
+        computationDispatcher = dispatcher
     }
 }
 

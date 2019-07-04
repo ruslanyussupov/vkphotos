@@ -5,7 +5,7 @@ import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.ViewModel
 import dev.iusupov.vkphotos.App
 import dev.iusupov.vkphotos.repository.DataSource
-import dev.iusupov.vkphotos.utils.StorageUtils
+import dev.iusupov.vkphotos.utils.NetworkUtils
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.cancel
@@ -16,8 +16,9 @@ import javax.inject.Inject
 class FriendsViewModel : ViewModel() {
 
     @Inject lateinit var dataSource: DataSource
-    @Inject lateinit var storageUtils: StorageUtils
+    @Inject lateinit var networkUtils: NetworkUtils
     val viewModelScope = CoroutineScope(Dispatchers.Main)
+    var retry: (() -> Unit)? = null
 
     init {
         App.dataComponent.inject(this)

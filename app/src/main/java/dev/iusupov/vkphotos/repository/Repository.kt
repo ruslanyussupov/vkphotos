@@ -6,41 +6,52 @@ import androidx.paging.PagedList
 import dev.iusupov.vkphotos.*
 import dev.iusupov.vkphotos.model.User
 import dev.iusupov.vkphotos.model.PhotoItem
-import dev.iusupov.vkphotos.utils.StorageUtils
+import dev.iusupov.vkphotos.utils.NetworkUtils
+import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.CoroutineScope
 import java.util.concurrent.Executor
 
 
 class Repository(private val api: Api,
-                 private val storageUtils: StorageUtils,
+                 private val networkUtils: NetworkUtils,
                  private val executor: Executor) : DataSource {
 
-    override fun fetchFriends(userId: Int, pageSize: Int, coroutineScope: CoroutineScope): Listing<User> {
+    override fun fetchFriends(
+        coroutineScope: CoroutineScope,
+        userId: Int,
+        pageSize: Int,
+        networkDispatcher: CoroutineDispatcher
+    ): Listing<User> {
         val config = PagedList.Config.Builder()
             .setEnablePlaceholders(true)
             .setPageSize(pageSize)
             .setInitialLoadSizeHint(pageSize * 2)
             .build()
-        val factory = FriendsDataSourceFactory(userId, api, coroutineScope)
+        val factory = FriendsDataSourceFactory(userId, api, coroutineScope, networkDispatcher)
         val pagedList = LivePagedListBuilder(factory, config).setFetchExecutor(executor).build()
         val loadInitialNetworkState = Transformations.switchMap(factory.source) { it.loadInitialNetworkState }
         val loadMoreNetworkState = Transformations.switchMap(factory.source) { it.loadMoreNetworkState }
-        val retry: () -> Unit = { factory.source.value?.retryFailed() }
+        val retry = Transformations.map(factory.source) { it.retryFailed }
 
         return Listing(pagedList, loadInitialNetworkState, loadMoreNetworkState, retry)
     }
 
-    override fun fetchPhotos(ownerId: Int, pageSize: Int, coroutineScope: CoroutineScope): Listing<PhotoItem> {
+    override fun fetchPhotos(
+        ownerId: Int,
+        coroutineScope: CoroutineScope,
+        pageSize: Int,
+        networkDispatcher: CoroutineDispatcher
+    ): Listing<PhotoItem> {
         val config = PagedList.Config.Builder()
             .setEnablePlaceholders(false)
             .setPageSize(pageSize)
             .setInitialLoadSizeHint(pageSize * 2)
             .build()
-        val factory = PhotosDataSourceFactory(ownerId, api, storageUtils, coroutineScope)
+        val factory = PhotosDataSourceFactory(ownerId, api, networkUtils, coroutineScope, networkDispatcher)
         val pagedList = LivePagedListBuilder(factory, config).setFetchExecutor(executor).build()
         val loadInitialNetworkState = Transformations.switchMap(factory.source) { it.loadInitialNetworkState }
         val loadMoreNetworkState = Transformations.switchMap(factory.source) { it.loadMoreNetworkState }
-        val retry: () -> Unit = { factory.source.value?.retryFailed() }
+        val retry = Transformations.map(factory.source) { it.retryFailed }
 
         return Listing(pagedList, loadInitialNetworkState, loadMoreNetworkState, retry)
     }

@@ -7,131 +7,138 @@ import com.vk.api.sdk.exceptions.VKApiExecutionException
 import dev.iusupov.vkphotos.*
 import dev.iusupov.vkphotos.model.Photo
 import dev.iusupov.vkphotos.model.PhotoItem
-import dev.iusupov.vkphotos.utils.StorageUtils
-import dev.iusupov.vkphotos.utils.loadBitmapWithCaching
+import dev.iusupov.vkphotos.utils.NetworkUtils
 import dev.iusupov.vkphotos.vksdk.ERROR_CODE_NO_DATA
 import dev.iusupov.vkphotos.vksdk.ERROR_CODE_PRIVATE_PROFILE
 import kotlinx.coroutines.*
 import timber.log.Timber
+import java.util.LinkedList
 
+// TODO: Maybe it's better to move requesting into independent class
 class PhotosDataSource(private val ownerId: Int,
                        private val api: Api,
-                       private val storageUtils: StorageUtils,
-                       private val coroutineScope: CoroutineScope) : PositionalDataSource<PhotoItem>() {
+                       private val networkUtils: NetworkUtils,
+                       private val coroutineScope: CoroutineScope,
+                       private val networkDispatcher: CoroutineDispatcher) : PositionalDataSource<PhotoItem>() {
 
+    val failed = LinkedList<suspend () -> Unit>()
     private val _loadMoreNetworkState = MutableLiveData<NetworkState>()
     private val _loadInitialNetworkState = MutableLiveData<NetworkState>()
-    private var retry: (() -> Unit)? = null
     val loadMoreNetworkState: LiveData<NetworkState> = _loadMoreNetworkState
     val loadInitialNetworkState: LiveData<NetworkState> = _loadInitialNetworkState
+
+    val retryFailed = {
+        while (failed.isNotEmpty()) {
+            coroutineScope.launch {
+                failed.removeLast().invoke()
+            }
+        }
+    }
 
     override fun loadInitial(params: LoadInitialParams, callback: LoadInitialCallback<PhotoItem>) {
         val count = params.requestedLoadSize
         val offset = params.requestedStartPosition
-        requestInitial(count, offset, callback)
+        coroutineScope.launch {
+            requestInitial(count, offset, callback)
+        }
     }
 
     override fun loadRange(params: LoadRangeParams, callback: LoadRangeCallback<PhotoItem>) {
         val count = params.loadSize
         val offset = params.startPosition
-        requestRange(count, offset, callback)
-    }
-
-    private fun requestInitial(count: Int, offset: Int, callback: LoadInitialCallback<PhotoItem>) {
-        if (!coroutineScope.isActive) return
-        Timber.d("Request initial: count=$count, offset=$offset.")
-
-        runBlocking {
-            _loadInitialNetworkState.postValue(NetworkState.LOADING)
-
-            coroutineScope.launch {
-                repeat(3) { attempt ->
-                    val delayInMillis = 5_000L * attempt
-                    delay(delayInMillis)
-
-                    try {
-                        val result = api.fetchPhotos(ownerId, count, offset)
-                        Timber.i("Requesting photos completed: count=$count, offset=$offset, result=${result.photos.size}: ${result.photos}")
-                        val photoItems = convertToPhotoItems(result.photos)
-                        Timber.i("Converted to photo items: size=${photoItems.size}")
-                        retry = null
-                        callback.onResult(photoItems, offset, result.count)
-                        if (photoItems.isEmpty()) {
-                            _loadInitialNetworkState.postValue(NetworkState.error("No data.",
-                                ERROR_CODE_NO_DATA
-                            ))
-                        } else {
-                            _loadInitialNetworkState.postValue(NetworkState.LOADED)
-                        }
-                        return@launch
-
-                    } catch (error: VKApiExecutionException) {
-                        Timber.e("Requesting photos is failed: count=$count, offset=$offset, attempt=$attempt. $error")
-
-                        val errorMsg = error.errorMsg ?: "Requesting photos is failed."
-
-                        if (error.code == ERROR_CODE_PRIVATE_PROFILE) {
-                            retry = { requestInitial(count, offset, callback) }
-                            _loadInitialNetworkState.postValue(NetworkState.error(errorMsg, error.code))
-                            return@launch
-                        } else if (attempt == 2) {
-                            retry = { requestInitial(count, offset, callback) }
-                            _loadInitialNetworkState.postValue(NetworkState.error(errorMsg, error.code))
-                        }
-
-                    } catch (error: Exception) {
-                        Timber.e("Requesting photos is failed: count=$count, offset=$offset, attempt=$attempt. $error")
-
-                        if (attempt == 2) {
-                            retry = { requestInitial(count, offset, callback) }
-                            val errorMsg = error.message ?: "Requesting photos is failed."
-                            _loadInitialNetworkState.postValue(NetworkState.error(errorMsg))
-                        }
-                    }
-                }
-            }.join()
+        coroutineScope.launch {
+            requestRange(count, offset, callback)
         }
     }
 
-    private fun requestRange(count: Int, offset: Int, callback: LoadRangeCallback<PhotoItem>) {
+    suspend fun requestInitial(count: Int, offset: Int, callback: LoadInitialCallback<PhotoItem>) {
+        if (!coroutineScope.isActive) return
+        Timber.d("Request initial: count=$count, offset=$offset.")
+
+        _loadInitialNetworkState.postValue(NetworkState.LOADING)
+
+        repeat(3) { attempt ->
+            val delayInMillis = 5_000L * attempt
+            delay(delayInMillis)
+
+            try {
+                val result = withContext(networkDispatcher) {
+                    api.fetchPhotos(ownerId, count, offset)
+                }
+                Timber.i("Requesting photos completed: count=$count, offset=$offset, result=${result.photos.size}: ${result.photos}")
+                val photoItems = convertToPhotoItems(result.photos)
+                Timber.i("Converted to photo items: size=${photoItems.size}")
+                callback.onResult(photoItems, offset, result.count)
+                if (photoItems.isEmpty()) {
+                    _loadInitialNetworkState.postValue(NetworkState.error("No data.",
+                        ERROR_CODE_NO_DATA
+                    ))
+                } else {
+                    _loadInitialNetworkState.postValue(NetworkState.LOADED)
+                }
+                return
+
+            } catch (error: VKApiExecutionException) {
+                Timber.e("Requesting photos is failed: count=$count, offset=$offset, attempt=$attempt. $error")
+
+                val errorMsg = error.errorMsg ?: "Requesting photos is failed."
+
+                if (error.code == ERROR_CODE_PRIVATE_PROFILE) {
+                    _loadInitialNetworkState.postValue(NetworkState.error(errorMsg, error.code))
+                    return
+                } else if (attempt == 2) {
+                    failed.addFirst { requestInitial(count, offset, callback) }
+                    _loadInitialNetworkState.postValue(NetworkState.error(errorMsg, error.code))
+                }
+
+            } catch (error: Exception) {
+                Timber.e("Requesting photos is failed: count=$count, offset=$offset, attempt=$attempt. $error")
+
+                if (attempt == 2) {
+                    failed.addFirst { requestInitial(count, offset, callback) }
+                    val errorMsg = error.message ?: "Requesting photos is failed."
+                    _loadInitialNetworkState.postValue(NetworkState.error(errorMsg))
+                }
+            }
+        }
+    }
+
+    suspend fun requestRange(count: Int, offset: Int, callback: LoadRangeCallback<PhotoItem>) {
         if (!coroutineScope.isActive) return
         Timber.i("Requesting range: count=$count, offset=$offset.")
 
-        runBlocking {
-            _loadMoreNetworkState.postValue(NetworkState.LOADING)
+        _loadMoreNetworkState.postValue(NetworkState.LOADING)
 
-            coroutineScope.launch {
-                repeat(3) { attempt ->
-                    val delayInMillis = 5_000L * attempt
-                    delay(delayInMillis)
+        repeat(3) { attempt ->
+            val delayInMillis = 5_000L * attempt
+            delay(delayInMillis)
 
-                    try {
-                        val result = api.fetchPhotos(ownerId, count, offset)
-                        Timber.i("Requesting photos completed: count=$count, offset=$offset, result=${result.photos.size}: ${result.photos}")
-                        val photoItems = convertToPhotoItems(result.photos)
-                        Timber.i("Converted to photo items: size=${photoItems.size}")
-                        retry = null
-                        callback.onResult(photoItems)
-                        _loadMoreNetworkState.postValue(NetworkState.LOADED)
-                        return@launch
+            try {
+                val result = withContext(networkDispatcher) {
+                    api.fetchPhotos(ownerId, count, offset)
+                }
+                Timber.i("Requesting photos completed: count=$count, offset=$offset, result=${result.photos.size}: ${result.photos}")
+                val photoItems = convertToPhotoItems(result.photos)
+                Timber.i("Converted to photo items: size=${photoItems.size}")
+                callback.onResult(photoItems)
+                _loadMoreNetworkState.postValue(NetworkState.LOADED)
+                return
 
-                    } catch (error: Exception) {
-                        Timber.e("Requesting photos is failed: count=$count, offset=$offset, attempt=$attempt. $error")
+            } catch (error: Exception) {
+                Timber.e("Requesting photos is failed: count=$count, offset=$offset, attempt=$attempt. $error")
 
-                        if (attempt == 2) {
-                            retry = { requestRange(count, offset, callback) }
+                if (attempt == 2) {
+                    failed.addFirst { requestRange(count, offset, callback) }
 
-                            if (error is VKApiExecutionException) {
-                                val errorMsg = error.errorMsg ?: "Requesting photos is failed."
-                                _loadMoreNetworkState.postValue(NetworkState.error(errorMsg, error.code))
-                            } else {
-                                val errorMsg = error.message ?: "Requesting photos is failed."
-                                _loadMoreNetworkState.postValue(NetworkState.error(errorMsg))
-                            }
-                        }
+                    if (error is VKApiExecutionException) {
+                        val errorMsg = error.errorMsg ?: "Requesting photos is failed."
+                        _loadMoreNetworkState.postValue(NetworkState.error(errorMsg, error.code))
+                    } else {
+                        val errorMsg = error.message ?: "Requesting photos is failed."
+                        _loadMoreNetworkState.postValue(NetworkState.error(errorMsg))
                     }
                 }
-            }.join()
+            }
         }
     }
 
@@ -141,7 +148,7 @@ class PhotosDataSource(private val ownerId: Int,
                 val url = photo.sizes["q"]?.url ?: photo.sizes["x"]?.url ?: photo.sizes["m"]?.url ?: return@map null
 
                 async {
-                    loadBitmapWithCaching(url, storageUtils)
+                    networkUtils.loadBitmapWithCaching(url)
                 }
             }
         }
@@ -156,9 +163,5 @@ class PhotosDataSource(private val ownerId: Int,
                     PhotoItem(id, bitmap, originalUrl, text, date, reposts, likes)
                 }
             }
-    }
-
-    fun retryFailed() {
-        retry?.invoke()
     }
 }

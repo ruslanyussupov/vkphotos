@@ -60,7 +60,7 @@ class PhotoDialogFragment : DialogFragment() {
             setBackgroundColor(ContextCompat.getColor(context, android.R.color.transparent))
         }
 
-        // TODO: show/hide app bar with animation and limited showing duration
+        // TODO: show/hide app bar with animation and limited showing duration.
         binding.root.setOnClickListener {
             if (isAppBarVisible) {
                 binding.appBar.visibility = View.GONE

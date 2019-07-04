@@ -9,10 +9,9 @@ import androidx.paging.PagedListAdapter
 import androidx.recyclerview.widget.DiffUtil
 import androidx.recyclerview.widget.RecyclerView
 import dev.iusupov.vkphotos.R
-import dev.iusupov.vkphotos.model.User
 import dev.iusupov.vkphotos.ext.toRoundedDrawable
-import dev.iusupov.vkphotos.utils.StorageUtils
-import dev.iusupov.vkphotos.utils.loadBitmapWithCaching
+import dev.iusupov.vkphotos.model.User
+import dev.iusupov.vkphotos.utils.NetworkUtils
 import kotlinx.android.synthetic.main.item_user.view.*
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Job
@@ -22,40 +21,42 @@ import kotlinx.coroutines.Dispatchers
 
 // TODO: show friends list with animation
 class UserAdapter(private val coroutineScope: CoroutineScope,
-                  private val storageUtils: StorageUtils,
+                  private val networkUtils: NetworkUtils,
                   private val onItemClick: ((user: User) -> Unit)? = null)
     : PagedListAdapter<User, UserAdapter.UserViewHolder>(DIFF_UTIL) {
 
     override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): UserViewHolder {
         val view = LayoutInflater.from(parent.context).inflate(R.layout.item_user, parent, false)
-        return UserViewHolder(view, coroutineScope, storageUtils)
+        return UserViewHolder(view, coroutineScope, networkUtils)
     }
 
     override fun onBindViewHolder(holder: UserViewHolder, position: Int) {
-        val user = getItem(position) ?: User(0, "", "", "")
+        val user = getItem(position)
         holder.bind(user)
-        holder.itemView.setOnClickListener {
-            onItemClick?.invoke(user)
+        if (user == null) {
+            holder.itemView.setOnClickListener { }
+        } else {
+            holder.itemView.setOnClickListener {
+                onItemClick?.invoke(user)
+            }
         }
     }
 
     class UserViewHolder(view: View,
                          private val scope: CoroutineScope,
-                         private val storageUtils: StorageUtils
+                         private val networkUtils: NetworkUtils
     ) : RecyclerView.ViewHolder(view) {
 
         private var job: Job? = null
 
-        fun bind(user: User) {
+        fun bind(user: User?) {
             itemView.photo.setImageResource(R.drawable.camera_circle_100)
 
-            if (user.firstName.isEmpty() && user.lastName.isEmpty()) {
+            if (user == null) {
                 showPlaceholders()
             } else {
                 showUserData(user)
             }
-
-            loadPhotoIntoImageView(user.photo, itemView.photo)
         }
 
         private fun showPlaceholders() {
@@ -68,6 +69,7 @@ class UserAdapter(private val coroutineScope: CoroutineScope,
         private fun showUserData(user: User) {
             itemView.full_name.apply {
                 setBackgroundColor(ContextCompat.getColor(itemView.context, android.R.color.transparent))
+                loadPhotoIntoImageView(user.photo, itemView.photo)
                 text = resources.getString(R.string.full_name, user.firstName, user.lastName)
             }
         }
@@ -76,7 +78,7 @@ class UserAdapter(private val coroutineScope: CoroutineScope,
             job?.cancel()
 
             job = scope.launch {
-                val bitmap = loadBitmapWithCaching(photoUrl, storageUtils)
+                val bitmap = networkUtils.loadBitmapWithCaching(photoUrl)
                 bitmap?.also {
                     withContext(Dispatchers.Main) {
                         view.setImageDrawable(it.toRoundedDrawable(itemView.resources))

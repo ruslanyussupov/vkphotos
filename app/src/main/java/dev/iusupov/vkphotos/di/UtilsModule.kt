@@ -4,6 +4,7 @@ import android.content.Context
 import dagger.Module
 import dagger.Provides
 import dagger.Reusable
+import dev.iusupov.vkphotos.utils.NetworkUtils
 import dev.iusupov.vkphotos.utils.StorageUtils
 import dev.iusupov.vkphotos.utils.StorageUtilsImpl
 
@@ -16,5 +17,12 @@ object UtilsModule {
     @JvmStatic
     fun provideStorageUtils(context: Context): StorageUtils {
         return StorageUtilsImpl(context)
+    }
+
+    @Provides
+    @Reusable
+    @JvmStatic
+    fun provideNetworkUtils(storageUtils: StorageUtils): NetworkUtils {
+        return NetworkUtils(storageUtils)
     }
 }

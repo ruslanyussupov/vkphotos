@@ -39,6 +39,8 @@ class PhotosActivity : AppCompatActivity() {
         initAdapter()
 
         handleNetworkStates()
+
+        observeFailed()
     }
 
     private fun setupAppBar(title: String) {
@@ -110,9 +112,15 @@ class PhotosActivity : AppCompatActivity() {
         })
     }
 
+    private fun observeFailed() {
+        viewModel.photosListing.retry.observe(this, Observer {
+            viewModel.retry = it
+        })
+    }
+
     private fun retryPopUp(message: String) {
         Snackbar.make(root, message, Snackbar.LENGTH_INDEFINITE).setAction(getString(R.string.retry)) {
-            viewModel.photosListing.retry()
+            viewModel.retry?.invoke()
         }.show()
     }
 
