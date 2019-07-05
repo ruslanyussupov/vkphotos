@@ -101,10 +101,12 @@ class PhotosActivity : AppCompatActivity() {
         })
 
         viewModel.photosListing.loadMoreNetworkState.observe(this, Observer { networkState ->
-            if (!hasNetworkConnection(this)) {
-                retryPopUp(getString(R.string.check_connection_and_retry))
-            } else {
-                retryPopUp(getString(R.string.default_try_again_message))
+            if (networkState.state == State.ERROR) {
+                if (!hasNetworkConnection(this)) {
+                    retryPopUp(getString(R.string.check_connection_and_retry))
+                } else {
+                    retryPopUp(getString(R.string.default_try_again_message))
+                }
             }
         })
     }
