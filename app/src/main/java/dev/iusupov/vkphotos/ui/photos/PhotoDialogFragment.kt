@@ -1,6 +1,9 @@
 package dev.iusupov.vkphotos.ui.photos
 
+import android.animation.Animator
+import android.animation.AnimatorListenerAdapter
 import android.os.Bundle
+import android.os.Handler
 import android.view.*
 import android.widget.Toast
 import androidx.core.content.ContextCompat
@@ -14,14 +17,30 @@ import dev.iusupov.vkphotos.ext.getViewModel
 import kotlinx.android.synthetic.main.toolbar.*
 
 // TODO: implement zoom as in https://github.com/chrisbanes/PhotoView
+// TODO: show/hide system UI onSingleTapUp
 class PhotoDialogFragment : DialogFragment() {
 
     private lateinit var viewModel: PhotosViewModel
     private lateinit var binding: FragmentDialogPhotoBinding
-    private var isAppBarVisible = false
+    private var shortAnimationDuration = 0
+    private val handler = Handler()
+
+    private val hideSystemUiRunnable = Runnable {
+        hideStatusBar()
+        hideToolbar()
+    }
+
+    private val onSystemUiVisibilityChangeListener: (Int) -> Unit = { visibility ->
+        if (visibility == View.VISIBLE) {
+            showToolbar()
+            handler.postDelayed(hideSystemUiRunnable, 3_000L)
+        }
+    }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+
+        shortAnimationDuration = resources.getInteger(android.R.integer.config_shortAnimTime)
 
         setStyle(STYLE_NORMAL, R.style.FullScreenDialog)
     }
@@ -50,35 +69,35 @@ class PhotoDialogFragment : DialogFragment() {
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
-        setupAppBar()
+        setupToolbar()
     }
 
-    private fun setupAppBar() {
+    private fun setupToolbar() {
         toolbar.apply {
             setNavigationIcon(R.drawable.ic_close_white_24dp)
             setNavigationOnClickListener { dismiss() }
-            setBackgroundColor(ContextCompat.getColor(context, android.R.color.transparent))
-        }
-
-        // TODO: show/hide app bar with animation and limited showing duration.
-        binding.root.setOnClickListener {
-            if (isAppBarVisible) {
-                binding.appBar.visibility = View.GONE
-                isAppBarVisible = false
-            } else {
-                binding.appBar.visibility = View.VISIBLE
-                isAppBarVisible = true
-            }
+            setBackgroundColor(ContextCompat.getColor(context, R.color.transparent_black))
         }
     }
 
     override fun onStart() {
         super.onStart()
-        dialog?.apply {
+        dialog!!.window!!.apply {
             val width = ViewGroup.LayoutParams.MATCH_PARENT
             val height = ViewGroup.LayoutParams.MATCH_PARENT
-            window?.setLayout(width, height)
+            setLayout(width, height)
+            decorView.setOnSystemUiVisibilityChangeListener(onSystemUiVisibilityChangeListener)
         }
+    }
+
+    override fun onResume() {
+        super.onResume()
+        showStatusBar()
+    }
+
+    override fun onPause() {
+        super.onPause()
+        handler.removeCallbacks(hideSystemUiRunnable)
     }
 
     override fun onCreateOptionsMenu(menu: Menu?, inflater: MenuInflater?) {
@@ -92,6 +111,42 @@ class PhotoDialogFragment : DialogFragment() {
                 Toast.makeText(context, errorMsg, Toast.LENGTH_LONG).show()
             }
         })
+    }
+
+    private fun showToolbar() {
+        toolbar.apply {
+            alpha = 0.0f
+            visibility = View.VISIBLE
+            animate()
+                .alpha(1.0f)
+                .setDuration(shortAnimationDuration.toLong())
+                .setListener(null)
+        }
+    }
+
+    private fun hideToolbar() {
+        toolbar.animate()
+            .alpha(0.0f)
+            .setDuration(shortAnimationDuration.toLong())
+            .setListener(object : AnimatorListenerAdapter(){
+                override fun onAnimationEnd(animation: Animator?) {
+                    toolbar.visibility = View.INVISIBLE
+                }
+            })
+    }
+
+    private fun showStatusBar() {
+        dialog!!.window!!.decorView.systemUiVisibility = (View.SYSTEM_UI_FLAG_LAYOUT_STABLE
+                or View.SYSTEM_UI_FLAG_LAYOUT_HIDE_NAVIGATION
+                or View.SYSTEM_UI_FLAG_LAYOUT_FULLSCREEN)
+    }
+
+    private fun hideStatusBar() {
+        dialog!!.window!!.decorView.systemUiVisibility = (View.SYSTEM_UI_FLAG_LAYOUT_STABLE
+                or View.SYSTEM_UI_FLAG_LAYOUT_HIDE_NAVIGATION
+                or View.SYSTEM_UI_FLAG_LAYOUT_FULLSCREEN
+                or View.SYSTEM_UI_FLAG_HIDE_NAVIGATION
+                or View.SYSTEM_UI_FLAG_FULLSCREEN)
     }
 
     companion object {

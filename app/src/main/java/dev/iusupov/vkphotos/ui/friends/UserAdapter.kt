@@ -19,7 +19,6 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import kotlinx.coroutines.Dispatchers
 
-// TODO: show friends list with animation
 class UserAdapter(private val coroutineScope: CoroutineScope,
                   private val networkUtils: NetworkUtils,
                   private val onItemClick: ((user: User) -> Unit)? = null)
