@@ -4,18 +4,24 @@ import android.content.Context
 import android.net.Uri
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
-import timber.log.Timber
 import java.io.File
 
 class StorageUtilsImpl(private val context: Context) : StorageUtils {
 
     private fun getTempFile(url: String): File? {
         return Uri.parse(url)?.lastPathSegment?.let { fileName ->
-            Timber.d("#getTempFile() $fileName")
-            val file = File(context.filesDir, "$fileName.tmp")
+            val file = File(getTempDir(), "$fileName.tmp")
             file.createNewFile()
             file
         }
+    }
+
+    private fun getTempDir(): File {
+        val tempDir = File(context.filesDir, "/temp/")
+        if (!tempDir.exists()) {
+            tempDir.mkdir()
+        }
+        return tempDir
     }
 
     override suspend fun writeToCache(url: String, byteArray: ByteArray) {
