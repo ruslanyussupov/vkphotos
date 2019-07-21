@@ -7,6 +7,7 @@ import androidx.paging.PagedListAdapter
 import androidx.recyclerview.widget.DiffUtil
 import androidx.recyclerview.widget.RecyclerView
 import androidx.recyclerview.widget.StaggeredGridLayoutManager
+import dev.iusupov.vkphotos.Loading
 import dev.iusupov.vkphotos.NetworkState
 import dev.iusupov.vkphotos.R
 import dev.iusupov.vkphotos.model.PhotoItem
@@ -54,7 +55,7 @@ class PhotosAdapter(private var onItemClick: ((photoItem: PhotoItem) -> Unit)?)
         }
     }
 
-    private fun hasExtraRow() = networkState != null && networkState != NetworkState.LOADED
+    private fun hasExtraRow() = networkState != null && networkState is Loading
 
     fun setNetworkState(newNetworkState: NetworkState?) {
         val previousState = this.networkState

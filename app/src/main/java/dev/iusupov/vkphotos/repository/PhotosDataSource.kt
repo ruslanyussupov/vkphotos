@@ -54,7 +54,7 @@ class PhotosDataSource(private val ownerId: Int,
 
         Timber.d("Request initial: count=$count, offset=$offset.")
 
-        _loadInitialNetworkState.postValue(NetworkState.LOADING)
+        _loadInitialNetworkState.postValue(Loading)
 
         repeat(3) { attempt ->
             val delayInMillis = 2_000L * attempt
@@ -68,13 +68,13 @@ class PhotosDataSource(private val ownerId: Int,
                 callback.onResult(photoItems, offset, result.count)
                 if (photoItems.isEmpty()) {
                     _loadInitialNetworkState.postValue(
-                        NetworkState.error(
+                        Error(
                             message = "No data.",
                             code = Error.ERROR_CODE_NO_DATA
                         )
                     )
                 } else {
-                    _loadInitialNetworkState.postValue(NetworkState.LOADED)
+                    _loadInitialNetworkState.postValue(Loaded)
                 }
                 return
 
@@ -84,11 +84,11 @@ class PhotosDataSource(private val ownerId: Int,
                 val errorMsg = error.errorMsg ?: "Requesting photos is failed."
 
                 if (error.code == Error.ERROR_CODE_PRIVATE_PROFILE) {
-                    _loadInitialNetworkState.postValue(NetworkState.error(errorMsg, error.code))
+                    _loadInitialNetworkState.postValue(Error(errorMsg, error.code))
                     return
                 } else if (attempt == 2) {
                     failed.addFirst { requestInitial(count, offset, callback) }
-                    _loadInitialNetworkState.postValue(NetworkState.error(errorMsg, error.code))
+                    _loadInitialNetworkState.postValue(Error(errorMsg, error.code))
                 }
 
             } catch (error: Exception) {
@@ -97,7 +97,7 @@ class PhotosDataSource(private val ownerId: Int,
                 if (attempt == 2) {
                     failed.addFirst { requestInitial(count, offset, callback) }
                     val errorMsg = error.message ?: "Requesting photos is failed."
-                    _loadInitialNetworkState.postValue(NetworkState.error(errorMsg))
+                    _loadInitialNetworkState.postValue(Error(errorMsg))
                 }
             }
         }
@@ -107,7 +107,7 @@ class PhotosDataSource(private val ownerId: Int,
         if (!coroutineScope.isActive) return
         Timber.i("Requesting range: count=$count, offset=$offset.")
 
-        _loadMoreNetworkState.postValue(NetworkState.LOADING)
+        _loadMoreNetworkState.postValue(Loading)
 
         repeat(3) { attempt ->
             val delayInMillis = 2_000L * attempt
@@ -119,7 +119,7 @@ class PhotosDataSource(private val ownerId: Int,
                 val photoItems = convertToPhotoItems(result.photos)
                 Timber.i("Converted to photo items: size=${photoItems.size}")
                 callback.onResult(photoItems)
-                _loadMoreNetworkState.postValue(NetworkState.LOADED)
+                _loadMoreNetworkState.postValue(Loaded)
                 return
 
             } catch (error: Exception) {
@@ -130,10 +130,10 @@ class PhotosDataSource(private val ownerId: Int,
 
                     if (error is VKApiExecutionException) {
                         val errorMsg = error.errorMsg ?: "Requesting photos is failed."
-                        _loadMoreNetworkState.postValue(NetworkState.error(errorMsg, error.code))
+                        _loadMoreNetworkState.postValue(Error(errorMsg, error.code))
                     } else {
                         val errorMsg = error.message ?: "Requesting photos is failed."
-                        _loadMoreNetworkState.postValue(NetworkState.error(errorMsg))
+                        _loadMoreNetworkState.postValue(Error(errorMsg))
                     }
                 }
             }
