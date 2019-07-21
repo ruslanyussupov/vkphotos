@@ -10,8 +10,8 @@ import androidx.core.content.ContextCompat
 import androidx.databinding.DataBindingUtil
 import androidx.fragment.app.DialogFragment
 import androidx.lifecycle.Observer
+import dev.iusupov.vkphotos.Error
 import dev.iusupov.vkphotos.R
-import dev.iusupov.vkphotos.State
 import dev.iusupov.vkphotos.databinding.FragmentDialogPhotoBinding
 import dev.iusupov.vkphotos.ext.getViewModel
 import kotlinx.android.synthetic.main.toolbar.*
@@ -105,9 +105,9 @@ class PhotoDialogFragment : DialogFragment() {
     }
 
     private fun handleErrorState() {
-        viewModel.openedPhotoState.observe(this, Observer {
-            if (it.state == State.ERROR) {
-                val errorMsg = it.error?.message ?: getString(R.string.default_error_message)
+        viewModel.openedPhotoState.observe(this, Observer { networkState ->
+            if (networkState is Error) {
+                val errorMsg = networkState.message
                 Toast.makeText(context, errorMsg, Toast.LENGTH_LONG).show()
             }
         })

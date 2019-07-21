@@ -6,6 +6,9 @@ import androidx.lifecycle.LiveData
 import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.ViewModel
 import dev.iusupov.vkphotos.App
+import dev.iusupov.vkphotos.Error
+import dev.iusupov.vkphotos.Loaded
+import dev.iusupov.vkphotos.Loading
 import dev.iusupov.vkphotos.NetworkState
 import dev.iusupov.vkphotos.model.PhotoItem
 import dev.iusupov.vkphotos.repository.DataSource
@@ -48,21 +51,21 @@ class PhotosViewModel(ownerId: Int) : ViewModel() {
 
     fun loadOpenedPhoto(photoItem: PhotoItem) {
         _openedPhoto.value = photoItem.thumbnail
-        _openedPhotoState.value = NetworkState.LOADING
+        _openedPhotoState.value = Loading
 
         val url = photoItem.originalUrl
 
         if (url == null) {
             _openedPhoto.postValue(photoItem.thumbnail)
-            _openedPhotoState.value = NetworkState.LOADED
+            _openedPhotoState.value = Loaded
         } else {
             viewModelScope.launch {
                 val bitmap = networkUtils.loadBitmap(url)
                 if (bitmap == null) {
-                    _openedPhotoState.postValue(NetworkState.error("Can't load image."))
+                    _openedPhotoState.postValue(Error("Can't load image."))
                 } else {
                     _openedPhoto.postValue(bitmap)
-                    _openedPhotoState.postValue(NetworkState.LOADED)
+                    _openedPhotoState.postValue(Loaded)
                 }
             }
         }

@@ -1,23 +1,10 @@
 package dev.iusupov.vkphotos
 
-@Suppress("DataClassPrivateConstructor")
-data class NetworkState private constructor(val state: State,
-                                            val error: Error? = null) {
-    companion object {
-        val LOADING = NetworkState(State.RUNNING)
-        val LOADED = NetworkState(State.SUCCESS)
-        fun error(message: String, code: Int = -1) = NetworkState(State.ERROR, Error(message, code))
-    }
-}
-
-enum class State {
-    RUNNING,
-    SUCCESS,
-    ERROR
-}
-
+sealed class NetworkState
+object Loading : NetworkState()
+object Loaded : NetworkState()
 data class Error(val message: String,
-                 val code: Int) {
+                 val code: Int = -1) : NetworkState() {
 
     companion object {
         const val ERROR_CODE_PRIVATE_PROFILE = 30

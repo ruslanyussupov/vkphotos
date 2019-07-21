@@ -65,14 +65,14 @@ class PhotosActivity : AppCompatActivity() {
 
     private fun handleNetworkStates() {
         viewModel.photosListing.loadInitialNetworkState.observe(this, Observer { networkState ->
-            when (networkState.state) {
-                State.ERROR -> {
+            when (networkState) {
+                is Error -> {
                     when {
-                        networkState.error?.code == Error.ERROR_CODE_PRIVATE_PROFILE -> {
+                        networkState.code == Error.ERROR_CODE_PRIVATE_PROFILE -> {
                             viewModel.isLoading.set(false)
                             viewModel.stateText.value = getString(R.string.profile_is_private)
                         }
-                        networkState.error?.code == Error.ERROR_CODE_NO_DATA -> {
+                        networkState.code == Error.ERROR_CODE_NO_DATA -> {
                             viewModel.isLoading.set(false)
                             viewModel.stateText.value = getString(R.string.photos_empty_state)
                         }
@@ -82,14 +82,14 @@ class PhotosActivity : AppCompatActivity() {
                             retryPopUp(getString(R.string.check_connection_and_retry))
                         }
                         else -> {
-                            val errorMsg = networkState.error?.message ?: getString(R.string.default_error_message)
+                            val errorMsg = networkState.message
                             viewModel.stateText.value = errorMsg
                             viewModel.isLoading.set(false)
                             retryPopUp(getString(R.string.default_try_again_message))
                         }
                     }
                 }
-                State.SUCCESS -> {
+                Loaded -> {
                     viewModel.isLoading.set(false)
                     viewModel.stateText.value = null
                 }
@@ -101,7 +101,7 @@ class PhotosActivity : AppCompatActivity() {
         })
 
         viewModel.photosListing.loadMoreNetworkState.observe(this, Observer { networkState ->
-            if (networkState.state == State.ERROR) {
+            if (networkState is Error) {
                 if (!hasNetworkConnection(this)) {
                     retryPopUp(getString(R.string.check_connection_and_retry))
                 } else {

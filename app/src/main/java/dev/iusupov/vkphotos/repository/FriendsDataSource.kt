@@ -5,6 +5,8 @@ import androidx.lifecycle.MutableLiveData
 import androidx.paging.PositionalDataSource
 import com.vk.api.sdk.exceptions.VKApiExecutionException
 import dev.iusupov.vkphotos.Error
+import dev.iusupov.vkphotos.Loaded
+import dev.iusupov.vkphotos.Loading
 import dev.iusupov.vkphotos.NetworkState
 import dev.iusupov.vkphotos.model.User
 import kotlinx.coroutines.*
@@ -53,7 +55,7 @@ class FriendsDataSource(private val userId: Int,
         if (!coroutineScope.isActive) return
         Timber.d("Request initial: count=$count, offset=$offset")
 
-        _loadInitialNetworkState.postValue(NetworkState.LOADING)
+        _loadInitialNetworkState.postValue(Loading)
 
         repeat(3) { attempt ->
             val delayInMillis = (2_000L * attempt)
@@ -65,13 +67,13 @@ class FriendsDataSource(private val userId: Int,
                 callback.onResult(result.users, offset, result.count)
                 if (result.users.isEmpty()) {
                     _loadInitialNetworkState.postValue(
-                        NetworkState.error(
+                        Error(
                             message = "No data.",
                             code = Error.ERROR_CODE_NO_DATA
                         )
                     )
                 } else {
-                    _loadInitialNetworkState.postValue(NetworkState.LOADED)
+                    _loadInitialNetworkState.postValue(Loaded)
                 }
                 return
 
@@ -83,10 +85,10 @@ class FriendsDataSource(private val userId: Int,
 
                     if (error is VKApiExecutionException) {
                         val errorMsg = error.errorMsg ?: "Requesting friends is failed."
-                        _loadInitialNetworkState.postValue(NetworkState.error(errorMsg, error.code))
+                        _loadInitialNetworkState.postValue(Error(errorMsg, error.code))
                     } else {
                         val errorMsg = error.message ?: "Requesting friends is failed."
-                        _loadInitialNetworkState.postValue(NetworkState.error(errorMsg))
+                        _loadInitialNetworkState.postValue(Error(errorMsg))
                     }
                 }
             }
@@ -97,7 +99,7 @@ class FriendsDataSource(private val userId: Int,
         if (!coroutineScope.isActive) return
         Timber.d("Request range: count=$count, offset=$offset")
 
-        _loadMoreNetworkState.postValue(NetworkState.LOADING)
+        _loadMoreNetworkState.postValue(Loading)
 
         repeat(3) { attempt ->
             val delayInMillis = 2_000L * attempt
@@ -107,7 +109,7 @@ class FriendsDataSource(private val userId: Int,
                 val result = api.fetchFriends(count, offset, userId)
                 Timber.i("Requesting friends completed: count=$count, offset=$offset, result=${result.users.size}: ${result.users}")
                 callback.onResult(result.users)
-                _loadMoreNetworkState.postValue(NetworkState.LOADED)
+                _loadMoreNetworkState.postValue(Loaded)
                 return
 
             } catch (error: Exception) {
@@ -118,10 +120,10 @@ class FriendsDataSource(private val userId: Int,
 
                     if (error is VKApiExecutionException) {
                         val errorMsg = error.errorMsg ?: "Requesting friends is failed."
-                        _loadMoreNetworkState.postValue(NetworkState.error(errorMsg, error.code))
+                        _loadMoreNetworkState.postValue(Error(errorMsg, error.code))
                     } else {
                         val errorMsg = error.message ?: "Requesting friends is failed."
-                        _loadMoreNetworkState.postValue(NetworkState.error(errorMsg))
+                        _loadMoreNetworkState.postValue(Error(errorMsg))
                     }
                 }
             }

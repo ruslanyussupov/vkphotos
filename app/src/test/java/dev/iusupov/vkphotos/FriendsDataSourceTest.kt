@@ -53,9 +53,9 @@ class FriendsDataSourceTest {
         dataSource.requestInitial(LOAD_SIZE, 0, callback)
 
         dataSource.loadInitialNetworkState.observeForever(networkStateObserver)
-        val state = networkStateObserver.value?.state
+        val state = networkStateObserver.value
 
-        assertThat(state, `is`(State.SUCCESS))
+        assert(state is Loaded)
     }
 
     @Test
@@ -74,9 +74,9 @@ class FriendsDataSourceTest {
         dataSource.requestRange(LOAD_SIZE, offset, callback)
 
         dataSource.loadMoreNetworkState.observeForever(networkStateObserver)
-        val state = networkStateObserver.value?.state
+        val state = networkStateObserver.value
 
-        assertThat(state, `is`(State.SUCCESS))
+        assert(state is Loaded)
     }
 
     @Test
@@ -99,11 +99,11 @@ class FriendsDataSourceTest {
         dataSource.failed.clear()
 
         dataSource.loadInitialNetworkState.observeForever(networkStateObserver)
-        val state = networkStateObserver.value?.state
-        val errorMsg = networkStateObserver.value?.error?.message
+        val state = networkStateObserver.value
 
-        assertThat(state, `is`(State.ERROR))
-        assertThat(errorMsg, `is`(ERROR_MSG))
+        assert(state is Error)
+        state as Error
+        assertThat(state.message, `is`(ERROR_MSG))
     }
 
     @Test
@@ -122,11 +122,11 @@ class FriendsDataSourceTest {
         dataSource.failed.clear()
 
         dataSource.loadMoreNetworkState.observeForever(networkStateObserver)
-        val state = networkStateObserver.value?.state
-        val errorMsg = networkStateObserver.value?.error?.message
+        val state = networkStateObserver.value
 
-        assertThat(state, `is`(State.ERROR))
-        assertThat(errorMsg, `is`(ERROR_MSG))
+        assert(state is Error)
+        state as Error
+        assertThat(state.message, `is`(ERROR_MSG))
     }
 
     @Test
@@ -149,9 +149,9 @@ class FriendsDataSourceTest {
         dataSource.requestInitial(LOAD_SIZE, 0, callback)
 
         dataSource.loadInitialNetworkState.observeForever(networkStateObserver)
-        val state = networkStateObserver.value?.state
+        val state = networkStateObserver.value
 
-        assertThat(state, `is`(State.SUCCESS))
+        assert(state is Loaded)
     }
 
     @Test
@@ -171,9 +171,9 @@ class FriendsDataSourceTest {
         dataSource.requestRange(LOAD_SIZE, offset, callback)
 
         dataSource.loadMoreNetworkState.observeForever(networkStateObserver)
-        val state = networkStateObserver.value?.state
+        val state = networkStateObserver.value
 
-        assertThat(state, `is`(State.SUCCESS))
+        assert(state is Loaded)
     }
 
     @Test
@@ -196,11 +196,11 @@ class FriendsDataSourceTest {
         dataSource.requestInitial(LOAD_SIZE, 0, callback)
 
         dataSource.loadInitialNetworkState.observeForever(networkStateObserver)
-        var state = networkStateObserver.value?.state
-        val errorMsg = networkStateObserver.value?.error?.message
+        var state = networkStateObserver.value
 
-        assertThat(state, `is`(State.ERROR))
-        assertThat(errorMsg, `is`(ERROR_MSG))
+        assert(state is Error)
+        state as Error
+        assertThat(state.message, `is`(ERROR_MSG))
 
         fakeApi.error = null
 
@@ -208,9 +208,9 @@ class FriendsDataSourceTest {
             dataSource.failed.removeLast().invoke()
         }
 
-        state = networkStateObserver.value?.state
+        state = networkStateObserver.value
 
-        assertThat(state, `is`(State.SUCCESS))
+        assert(state is Loaded)
     }
 
     @Test
@@ -230,20 +230,20 @@ class FriendsDataSourceTest {
         dataSource.requestRange(LOAD_SIZE, offset, callback)
 
         dataSource.loadMoreNetworkState.observeForever(networkStateObserver)
-        var state = networkStateObserver.value?.state
-        val errorMsg = networkStateObserver.value?.error?.message
+        var state = networkStateObserver.value
 
-        assertThat(state, `is`(State.ERROR))
-        assertThat(errorMsg, `is`(ERROR_MSG))
+        assert(state is Error)
+        state as Error
+        assertThat(state.message, `is`(ERROR_MSG))
 
         fakeApi.error = null
 
         while (dataSource.failed.isNotEmpty()) {
             dataSource.failed.removeLast().invoke()
         }
-        state = networkStateObserver.value?.state
+        state = networkStateObserver.value
 
-        assertThat(state, `is`(State.SUCCESS))
+        assert(state is Loaded)
     }
 
     companion object {
