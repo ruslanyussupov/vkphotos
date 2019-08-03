@@ -2,7 +2,7 @@ package dev.iusupov.vkphotos.repository
 
 import dev.iusupov.vkphotos.model.User
 import dev.iusupov.vkphotos.Listing
-import dev.iusupov.vkphotos.model.PhotoItem
+import dev.iusupov.vkphotos.model.Photo
 import kotlinx.coroutines.CoroutineScope
 
 interface DataSource {
@@ -13,5 +13,5 @@ interface DataSource {
 
     fun fetchPhotos(ownerId: Int,
                     coroutineScope: CoroutineScope,
-                    pageSize: Int = 20): Listing<PhotoItem>
+                    pageSize: Int = 20): Listing<Photo>
 }

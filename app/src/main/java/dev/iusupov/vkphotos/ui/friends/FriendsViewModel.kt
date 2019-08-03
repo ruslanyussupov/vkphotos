@@ -9,6 +9,7 @@ import dev.iusupov.vkphotos.utils.NetworkUtils
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.cancel
+import kotlinx.coroutines.launch
 import timber.log.Timber
 import javax.inject.Inject
 
@@ -17,19 +18,25 @@ class FriendsViewModel : ViewModel() {
 
     @Inject lateinit var dataSource: DataSource
     @Inject lateinit var networkUtils: NetworkUtils
+
     val viewModelScope = CoroutineScope(Dispatchers.Main)
-    var retry: (() -> Unit)? = null
 
     init {
         App.dataComponent.inject(this)
     }
 
     val friendsListing by lazy {
-        dataSource.fetchFriends(coroutineScope = viewModelScope)
+        dataSource.fetchFriends(viewModelScope)
     }
 
     val isLoading =  ObservableBoolean()
     val stateText = MutableLiveData<String>()
+
+    fun retry() {
+        viewModelScope.launch {
+            friendsListing.retry()
+        }
+    }
 
     override fun onCleared() {
         super.onCleared()

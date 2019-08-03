@@ -54,6 +54,7 @@ class PhotoDialogFragment : DialogFragment() {
         binding.lifecycleOwner = this
         binding.networkState = viewModel.openedPhotoState
 
+        // TODO: Use viewLifecycleOwner
         viewModel.openedPhoto.observe(this, Observer {
             if (it == null) {
                 binding.photo.setImageResource(R.drawable.error_photo_placeholder)

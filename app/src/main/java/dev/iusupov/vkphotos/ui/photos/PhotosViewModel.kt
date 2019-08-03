@@ -10,7 +10,7 @@ import dev.iusupov.vkphotos.Error
 import dev.iusupov.vkphotos.Loaded
 import dev.iusupov.vkphotos.Loading
 import dev.iusupov.vkphotos.NetworkState
-import dev.iusupov.vkphotos.model.PhotoItem
+import dev.iusupov.vkphotos.model.Photo
 import dev.iusupov.vkphotos.repository.DataSource
 import dev.iusupov.vkphotos.utils.NetworkUtils
 import kotlinx.coroutines.CoroutineScope
@@ -27,7 +27,6 @@ class PhotosViewModel(ownerId: Int) : ViewModel() {
     @Inject lateinit var networkUtils: NetworkUtils
 
     val viewModelScope = CoroutineScope(Dispatchers.Main)
-    var retry: (() -> Unit)? = null
 
     private val _openedPhoto = MutableLiveData<Bitmap>()
     val openedPhoto: LiveData<Bitmap> = _openedPhoto
@@ -49,14 +48,15 @@ class PhotosViewModel(ownerId: Int) : ViewModel() {
         App.dataComponent.inject(this)
     }
 
-    fun loadOpenedPhoto(photoItem: PhotoItem) {
-        _openedPhoto.value = photoItem.thumbnail
+    fun loadOpenedPhoto(photo: Photo, thumbnail: Bitmap?) {
+        _openedPhoto.value = thumbnail
         _openedPhotoState.value = Loading
 
-        val url = photoItem.originalUrl
+        val url = photo.run {
+            sizes["w"]?.url ?: sizes["z"]?.url ?: sizes["y"]?.url ?: sizes["x"]?.url
+        }
 
         if (url == null) {
-            _openedPhoto.postValue(photoItem.thumbnail)
             _openedPhotoState.value = Loaded
         } else {
             viewModelScope.launch {
@@ -68,6 +68,12 @@ class PhotosViewModel(ownerId: Int) : ViewModel() {
                     _openedPhotoState.postValue(Loaded)
                 }
             }
+        }
+    }
+
+    fun retry() {
+        viewModelScope.launch {
+            photosListing.retry()
         }
     }
 

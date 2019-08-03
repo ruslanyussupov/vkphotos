@@ -4,40 +4,28 @@ import androidx.arch.core.executor.testing.InstantTaskExecutorRule
 import androidx.paging.PositionalDataSource
 import dev.iusupov.vkphotos.model.User
 import dev.iusupov.vkphotos.repository.FriendsDataSource
-import kotlinx.coroutines.*
+import kotlinx.coroutines.ObsoleteCoroutinesApi
+import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.test.runBlockingTest
-import kotlinx.coroutines.test.setMain
 import org.hamcrest.CoreMatchers.`is`
 import org.hamcrest.MatcherAssert.assertThat
-import org.junit.Before
 import org.junit.Rule
 import org.junit.Test
 
 @ObsoleteCoroutinesApi
 @ExperimentalCoroutinesApi
-class FriendsDataSourceTest {
+class FriendsDataSourceRequestTest {
 
     @get:Rule // used to make all live data calls sync
     val instantExecutor = InstantTaskExecutorRule()
 
-    private val coroutineScope = CoroutineScope(Dispatchers.Main)
-    private val mainThreadSurrogate = newSingleThreadContext("UI thread")
     private val fakeApi = FakeApi()
-
-    private val dataSource = FriendsDataSource(
-        userId = -1,
-        api = fakeApi,
-        coroutineScope = coroutineScope)
-
-    @Before
-    fun setup() {
-        Dispatchers.setMain(mainThreadSurrogate)
-    }
 
     @Test
     fun requestInitial() = runBlockingTest {
         fakeApi.error = null
 
+        val request = FriendsDataSource.Request(-1,  fakeApi)
         val networkStateObserver = LoggingObserver<NetworkState>()
         val callback = object : PositionalDataSource.LoadInitialCallback<User>() {
             override fun onResult(data: MutableList<User>, position: Int, totalCount: Int) {
@@ -50,9 +38,9 @@ class FriendsDataSourceTest {
             }
         }
 
-        dataSource.requestInitial(LOAD_SIZE, 0, callback)
+        request.requestInitial(LOAD_SIZE, 0, callback)
 
-        dataSource.loadInitialNetworkState.observeForever(networkStateObserver)
+        request.requestInitialState.observeForever(networkStateObserver)
         val state = networkStateObserver.value
 
         assert(state is Loaded)
@@ -63,6 +51,7 @@ class FriendsDataSourceTest {
         fakeApi.error = null
 
         val offset = 20
+        val request = FriendsDataSource.Request(-1,  fakeApi)
         val networkStateObserver = LoggingObserver<NetworkState>()
         val callback = object : PositionalDataSource.LoadRangeCallback<User>() {
             override fun onResult(data: MutableList<User>) {
@@ -71,9 +60,9 @@ class FriendsDataSourceTest {
             }
         }
 
-        dataSource.requestRange(LOAD_SIZE, offset, callback)
+        request.requestRange(LOAD_SIZE, offset, callback)
 
-        dataSource.loadMoreNetworkState.observeForever(networkStateObserver)
+        request.requestRangeState.observeForever(networkStateObserver)
         val state = networkStateObserver.value
 
         assert(state is Loaded)
@@ -84,6 +73,7 @@ class FriendsDataSourceTest {
         fakeApi.error = Exception(ERROR_MSG)
         fakeApi.withRecovery = false
 
+        val request = FriendsDataSource.Request(-1,  fakeApi)
         val networkStateObserver = LoggingObserver<NetworkState>()
         val callback = object : PositionalDataSource.LoadInitialCallback<User>() {
             override fun onResult(data: MutableList<User>, position: Int, totalCount: Int) {
@@ -95,10 +85,9 @@ class FriendsDataSourceTest {
             }
         }
 
-        dataSource.requestInitial(LOAD_SIZE, 0, callback)
-        dataSource.failed.clear()
+        request.requestInitial(LOAD_SIZE, 0, callback)
 
-        dataSource.loadInitialNetworkState.observeForever(networkStateObserver)
+        request.requestInitialState.observeForever(networkStateObserver)
         val state = networkStateObserver.value
 
         assert(state is Error)
@@ -111,6 +100,7 @@ class FriendsDataSourceTest {
         fakeApi.error = Exception(ERROR_MSG)
         fakeApi.withRecovery = false
 
+        val request = FriendsDataSource.Request(-1,  fakeApi)
         val networkStateObserver = LoggingObserver<NetworkState>()
         val callback = object : PositionalDataSource.LoadRangeCallback<User>() {
             override fun onResult(data: MutableList<User>) {
@@ -118,10 +108,9 @@ class FriendsDataSourceTest {
             }
         }
 
-        dataSource.requestRange(LOAD_SIZE, 20, callback)
-        dataSource.failed.clear()
+        request.requestRange(LOAD_SIZE, 20, callback)
 
-        dataSource.loadMoreNetworkState.observeForever(networkStateObserver)
+        request.requestRangeState.observeForever(networkStateObserver)
         val state = networkStateObserver.value
 
         assert(state is Error)
@@ -134,6 +123,7 @@ class FriendsDataSourceTest {
         fakeApi.error = Exception(ERROR_MSG)
         fakeApi.withRecovery = true
 
+        val request = FriendsDataSource.Request(-1,  fakeApi)
         val networkStateObserver = LoggingObserver<NetworkState>()
         val callback = object : PositionalDataSource.LoadInitialCallback<User>() {
             override fun onResult(data: MutableList<User>, position: Int, totalCount: Int) {
@@ -146,9 +136,9 @@ class FriendsDataSourceTest {
             }
         }
 
-        dataSource.requestInitial(LOAD_SIZE, 0, callback)
+        request.requestInitial(LOAD_SIZE, 0, callback)
 
-        dataSource.loadInitialNetworkState.observeForever(networkStateObserver)
+        request.requestInitialState.observeForever(networkStateObserver)
         val state = networkStateObserver.value
 
         assert(state is Loaded)
@@ -160,6 +150,7 @@ class FriendsDataSourceTest {
         fakeApi.withRecovery = true
 
         val offset = 20
+        val request = FriendsDataSource.Request(-1,  fakeApi)
         val networkStateObserver = LoggingObserver<NetworkState>()
         val callback = object : PositionalDataSource.LoadRangeCallback<User>() {
             override fun onResult(data: MutableList<User>) {
@@ -168,9 +159,9 @@ class FriendsDataSourceTest {
             }
         }
 
-        dataSource.requestRange(LOAD_SIZE, offset, callback)
+        request.requestRange(LOAD_SIZE, offset, callback)
 
-        dataSource.loadMoreNetworkState.observeForever(networkStateObserver)
+        request.requestRangeState.observeForever(networkStateObserver)
         val state = networkStateObserver.value
 
         assert(state is Loaded)
@@ -181,6 +172,7 @@ class FriendsDataSourceTest {
         fakeApi.error = Exception(ERROR_MSG)
         fakeApi.withRecovery = false
 
+        val request = FriendsDataSource.Request(-1,  fakeApi)
         val networkStateObserver = LoggingObserver<NetworkState>()
         val callback = object : PositionalDataSource.LoadInitialCallback<User>() {
             override fun onResult(data: MutableList<User>, position: Int, totalCount: Int) {
@@ -193,9 +185,9 @@ class FriendsDataSourceTest {
             }
         }
 
-        dataSource.requestInitial(LOAD_SIZE, 0, callback)
+        request.requestInitial(LOAD_SIZE, 0, callback)
 
-        dataSource.loadInitialNetworkState.observeForever(networkStateObserver)
+        request.requestInitialState.observeForever(networkStateObserver)
         var state = networkStateObserver.value
 
         assert(state is Error)
@@ -204,9 +196,7 @@ class FriendsDataSourceTest {
 
         fakeApi.error = null
 
-        while (dataSource.failed.isNotEmpty()) {
-            dataSource.failed.removeLast().invoke()
-        }
+        request.retryAllFailed()
 
         state = networkStateObserver.value
 
@@ -219,6 +209,7 @@ class FriendsDataSourceTest {
         fakeApi.withRecovery = false
 
         val offset = 20
+        val request = FriendsDataSource.Request(-1,  fakeApi)
         val networkStateObserver = LoggingObserver<NetworkState>()
         val callback = object : PositionalDataSource.LoadRangeCallback<User>() {
             override fun onResult(data: MutableList<User>) {
@@ -227,9 +218,9 @@ class FriendsDataSourceTest {
             }
         }
 
-        dataSource.requestRange(LOAD_SIZE, offset, callback)
+        request.requestRange(LOAD_SIZE, offset, callback)
 
-        dataSource.loadMoreNetworkState.observeForever(networkStateObserver)
+        request.requestRangeState.observeForever(networkStateObserver)
         var state = networkStateObserver.value
 
         assert(state is Error)
@@ -238,9 +229,8 @@ class FriendsDataSourceTest {
 
         fakeApi.error = null
 
-        while (dataSource.failed.isNotEmpty()) {
-            dataSource.failed.removeLast().invoke()
-        }
+        request.retryAllFailed()
+
         state = networkStateObserver.value
 
         assert(state is Loaded)

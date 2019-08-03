@@ -1,5 +1,6 @@
 package dev.iusupov.vkphotos.ui.photos
 
+import android.graphics.Bitmap
 import androidx.appcompat.app.AppCompatActivity
 import android.os.Bundle
 import androidx.databinding.DataBindingUtil
@@ -9,11 +10,10 @@ import com.google.android.material.snackbar.Snackbar
 import dev.iusupov.vkphotos.*
 import dev.iusupov.vkphotos.databinding.ActivityPhotosBinding
 import dev.iusupov.vkphotos.ext.getViewModel
-import dev.iusupov.vkphotos.model.PhotoItem
+import dev.iusupov.vkphotos.model.Photo
 import dev.iusupov.vkphotos.utils.hasNetworkConnection
 import kotlinx.android.synthetic.main.activity_photos.root
 import kotlinx.android.synthetic.main.toolbar.*
-import timber.log.Timber
 
 class PhotosActivity : AppCompatActivity() {
 
@@ -38,8 +38,6 @@ class PhotosActivity : AppCompatActivity() {
         initAdapter()
 
         handleNetworkStates()
-
-        observeFailed()
     }
 
     private fun setupAppBar(title: String) {
@@ -51,7 +49,7 @@ class PhotosActivity : AppCompatActivity() {
     }
 
     private fun initAdapter() {
-        val adapter = PhotosAdapter(this::onItemClick)
+        val adapter = PhotosAdapter(viewModel.viewModelScope, viewModel.networkUtils, this::onItemClick)
         binding.photosRv.adapter = adapter
 
         viewModel.photosListing.pagedList.observe(this, Observer { photoItems ->
@@ -111,21 +109,14 @@ class PhotosActivity : AppCompatActivity() {
         })
     }
 
-    private fun observeFailed() {
-        viewModel.photosListing.retry.observe(this, Observer {
-            viewModel.retry = it
-        })
-    }
-
     private fun retryPopUp(message: String) {
         Snackbar.make(root, message, Snackbar.LENGTH_INDEFINITE).setAction(getString(R.string.retry)) {
-            Timber.d("retry = ${viewModel.retry}")
-            viewModel.retry?.invoke()
+            viewModel.retry()
         }.show()
     }
 
-    private fun onItemClick(photoItem: PhotoItem) {
-        viewModel.loadOpenedPhoto(photoItem)
+    private fun onItemClick(photo: Photo, thumbnail: Bitmap?) {
+        viewModel.loadOpenedPhoto(photo, thumbnail)
         openPhotoDialogFragment(ownerId)
     }
 

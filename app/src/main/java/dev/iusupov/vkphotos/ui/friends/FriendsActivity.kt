@@ -40,8 +40,6 @@ class FriendsActivity : AppCompatActivity() {
         initAdapter()
 
         handleNetworkStates()
-
-        observeFailed()
     }
 
     override fun onCreateOptionsMenu(menu: Menu?): Boolean {
@@ -122,12 +120,6 @@ class FriendsActivity : AppCompatActivity() {
         })
     }
 
-    private fun observeFailed() {
-        viewModel.friendsListing.retry.observe(this, Observer {
-            viewModel.retry = it
-        })
-    }
-
     private fun onUserClick(user: User) {
         val fullName = "${user.firstName} ${user.lastName}"
         launchPhotosActivity(user.id, fullName)
@@ -135,7 +127,7 @@ class FriendsActivity : AppCompatActivity() {
 
     private fun retryPopUp(message: String) {
         Snackbar.make(root, message, Snackbar.LENGTH_INDEFINITE).setAction(getString(R.string.retry)) {
-            viewModel.retry?.invoke()
+            viewModel.retry()
         }.show()
     }
 

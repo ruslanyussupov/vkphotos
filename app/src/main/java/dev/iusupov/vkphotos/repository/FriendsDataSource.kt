@@ -9,121 +9,138 @@ import dev.iusupov.vkphotos.Loaded
 import dev.iusupov.vkphotos.Loading
 import dev.iusupov.vkphotos.NetworkState
 import dev.iusupov.vkphotos.model.User
-import kotlinx.coroutines.*
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.isActive
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.coroutineScope
+import kotlinx.coroutines.delay
 import timber.log.Timber
-import java.util.LinkedList
+import java.util.concurrent.LinkedBlockingQueue
 
-// TODO: Maybe it's better to move requesting into independent class
-class FriendsDataSource(private val userId: Int,
-                        private val api: Api,
+class FriendsDataSource(private val request: Request,
                         private val coroutineScope: CoroutineScope) : PositionalDataSource<User>() {
 
-    private val _loadMoreNetworkState = MutableLiveData<NetworkState>()
-    private val _loadInitialNetworkState = MutableLiveData<NetworkState>()
-    val failed = LinkedList<suspend () -> Unit>()
-    val loadMoreNetworkState: LiveData<NetworkState> = _loadMoreNetworkState
-    val loadInitialNetworkState: LiveData<NetworkState> = _loadInitialNetworkState
-
-    val retryFailed = {
-        while (failed.isNotEmpty()) {
-            val last = failed.removeLast()
-            coroutineScope.launch {
-                last.invoke()
-            }
-        }
-    }
-
     override fun loadInitial(params: LoadInitialParams, callback: LoadInitialCallback<User>) {
+        if (!coroutineScope.isActive) return
+
         val count = params.requestedLoadSize
         val offset = params.requestedStartPosition
 
         coroutineScope.launch {
-            requestInitial(count, offset, callback)
+            request.requestInitial(count, offset, callback)
         }
     }
 
     override fun loadRange(params: LoadRangeParams, callback: LoadRangeCallback<User>) {
+        if (!coroutineScope.isActive) return
+
         val count = params.loadSize
         val offset = params.startPosition
 
         coroutineScope.launch {
-            requestRange(count, offset, callback)
+            request.requestRange(count, offset, callback)
         }
     }
 
-    suspend fun requestInitial(count: Int, offset: Int, callback: LoadInitialCallback<User>) {
-        if (!coroutineScope.isActive) return
-        Timber.d("Request initial: count=$count, offset=$offset")
+    class Request(private val userId: Int,
+                  private val api: Api) {
 
-        _loadInitialNetworkState.postValue(Loading)
+        private val _requestInitialState = MutableLiveData<NetworkState>()
+        private val _requestRangeState = MutableLiveData<NetworkState>()
+        private val failed = LinkedBlockingQueue<suspend () -> Unit>()
+        val requestInitialState: LiveData<NetworkState> = _requestInitialState
+        val requestRangeState: LiveData<NetworkState> = _requestRangeState
 
-        repeat(3) { attempt ->
-            val delayInMillis = (2_000L * attempt)
-            delay(delayInMillis)
+        suspend fun requestInitial(count: Int, offset: Int, callback: LoadInitialCallback<User>) {
+            Timber.d("Request initial: count=$count, offset=$offset")
 
-            try {
-                val result = api.fetchFriends(count, offset, userId)
-                Timber.i("Requesting friends completed: count=$count, offset=$offset, result=${result.users.size}: ${result.users}")
-                callback.onResult(result.users, offset, result.count)
-                if (result.users.isEmpty()) {
-                    _loadInitialNetworkState.postValue(
-                        Error(
-                            message = "No data.",
-                            code = Error.ERROR_CODE_NO_DATA
+            _requestInitialState.postValue(Loading)
+
+            repeat(3) { attemptCount ->
+                val delayInMillis = 2_000L * attemptCount
+                delay(delayInMillis)
+
+                try {
+                    val response = api.fetchFriends(count, offset, userId)
+
+                    Timber.i("Requesting friends completed: count=$count, offset=$offset, size=${response.users.size}")
+
+                    callback.onResult(response.users, offset, response.count)
+
+                    if (response.users.isEmpty()) {
+                        _requestInitialState.postValue(
+                            Error(
+                                message = "There are no friends.",
+                                code = Error.ERROR_CODE_NO_DATA
+                            )
                         )
-                    )
-                } else {
-                    _loadInitialNetworkState.postValue(Loaded)
-                }
-                return
-
-            } catch(error: Exception) {
-                Timber.e("Requesting friends is failed: count=$count, offset=$offset, attempt=$attempt. $error")
-
-                if (attempt == 2) {
-                    failed.addFirst { requestInitial(count, offset, callback) }
-
-                    if (error is VKApiExecutionException) {
-                        val errorMsg = error.errorMsg ?: "Requesting friends is failed."
-                        _loadInitialNetworkState.postValue(Error(errorMsg, error.code))
                     } else {
-                        val errorMsg = error.message ?: "Requesting friends is failed."
-                        _loadInitialNetworkState.postValue(Error(errorMsg))
+                        _requestInitialState.postValue(Loaded)
+                    }
+
+                    return
+
+                } catch (error: Exception) {
+                    Timber.e("Requesting friends is failed: count=$count, offset=$offset, attempt count=$attemptCount. $error")
+
+                    if (attemptCount >= 2) {
+                        failed.put { requestInitial(count, offset, callback) }
+
+                        if (error is VKApiExecutionException) {
+                            val message = error.errorMsg ?: "Requesting friends is failed."
+                            _requestInitialState.postValue(Error(message, error.code))
+                        } else {
+                            val message = error.message ?: "Requesting friends is failed."
+                            _requestInitialState.postValue(Error(message))
+                        }
                     }
                 }
             }
         }
-    }
 
-    suspend fun requestRange(count: Int, offset: Int, callback: LoadRangeCallback<User>) {
-        if (!coroutineScope.isActive) return
-        Timber.d("Request range: count=$count, offset=$offset")
+        suspend fun requestRange(count: Int, offset: Int, callback: LoadRangeCallback<User>) {
+            Timber.d("Request range: count=$count, offset=$offset")
 
-        _loadMoreNetworkState.postValue(Loading)
+            _requestRangeState.postValue(Loading)
 
-        repeat(3) { attempt ->
-            val delayInMillis = 2_000L * attempt
-            delay(delayInMillis)
+            repeat(3) { attemptCount ->
+                val delayInMillis = 2_000L * attemptCount
+                delay(delayInMillis)
 
-            try {
-                val result = api.fetchFriends(count, offset, userId)
-                Timber.i("Requesting friends completed: count=$count, offset=$offset, result=${result.users.size}: ${result.users}")
-                callback.onResult(result.users)
-                _loadMoreNetworkState.postValue(Loaded)
-                return
+                try {
+                    val response = api.fetchFriends(count, offset, userId)
 
-            } catch (error: Exception) {
-                Timber.e("Requesting friends is failed count=$count, offset=$offset, attempt=$attempt. $error")
+                    Timber.i("Requesting friends completed: count=$count, offset=$offset, size=${response.users.size}")
 
-                if (attempt == 2) {
-                    failed.addFirst { requestRange(count, offset, callback) }
+                    callback.onResult(response.users)
+                    _requestRangeState.postValue(Loaded)
 
-                    if (error is VKApiExecutionException) {
-                        val errorMsg = error.errorMsg ?: "Requesting friends is failed."
-                        _loadMoreNetworkState.postValue(Error(errorMsg, error.code))
-                    } else {
-                        val errorMsg = error.message ?: "Requesting friends is failed."
-                        _loadMoreNetworkState.postValue(Error(errorMsg))
+                    return
+
+                } catch (error: Exception) {
+                    Timber.e("Requesting friends is failed: count=$count, offset=$offset, attempt count=$attemptCount. $error")
+
+                    if (attemptCount >= 2) {
+                        failed.put { requestRange(count, offset, callback) }
+
+                        if (error is VKApiExecutionException) {
+                            val message = error.errorMsg ?: "Requesting friends is failed."
+                            _requestRangeState.postValue(Error(message, error.code))
+                        } else {
+                            val message = error.message ?: "Requesting friends is failed."
+                            _requestRangeState.postValue(Error(message))
+                        }
+                    }
+                }
+            }
+        }
+
+        suspend fun retryAllFailed() {
+            coroutineScope {
+                while (failed.isNotEmpty()) {
+                    val last = failed.take()
+                    launch {
+                        last()
                     }
                 }
             }

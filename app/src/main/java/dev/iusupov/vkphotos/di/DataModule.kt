@@ -7,7 +7,6 @@ import dev.iusupov.vkphotos.repository.Api
 import dev.iusupov.vkphotos.repository.ApiImpl
 import dev.iusupov.vkphotos.repository.DataSource
 import dev.iusupov.vkphotos.repository.Repository
-import dev.iusupov.vkphotos.utils.NetworkUtils
 import java.util.concurrent.Executor
 
 @Module
@@ -16,8 +15,8 @@ object DataModule {
     @Provides
     @Reusable
     @JvmStatic
-    fun provideDataSource(api: Api, networkUtils: NetworkUtils, executor: Executor): DataSource {
-        return Repository(api, networkUtils, executor)
+    fun provideDataSource(api: Api, executor: Executor): DataSource {
+        return Repository(api, executor)
     }
 
     @Provides
