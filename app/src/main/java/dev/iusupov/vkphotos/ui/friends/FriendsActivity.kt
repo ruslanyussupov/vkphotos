@@ -39,6 +39,8 @@ class FriendsActivity : AppCompatActivity() {
 
         initAdapter()
 
+        setupSwipeToRefresh()
+
         handleNetworkStates()
     }
 
@@ -72,38 +74,38 @@ class FriendsActivity : AppCompatActivity() {
         })
     }
 
+    private fun setupSwipeToRefresh() {
+        swipe_refresh.setOnRefreshListener {
+            viewModel.refresh()
+        }
+    }
+
     private fun handleNetworkStates() {
         viewModel.friendsListing.loadInitialNetworkState.observe(this, Observer { networkState ->
             when (networkState) {
                 is Error -> {
+                    swipe_refresh.isRefreshing = false
                     when {
-                        networkState.code == Error.ERROR_CODE_PRIVATE_PROFILE -> {
-                            viewModel.isLoading.set(false)
-                            viewModel.stateText.value = getString(R.string.profile_is_private)
-                        }
                         networkState.code == Error.ERROR_CODE_NO_DATA -> {
-                            viewModel.isLoading.set(false)
                             viewModel.stateText.value = getString(R.string.friends_empty_state)
                         }
                         !hasNetworkConnection(this) -> {
-                            viewModel.isLoading.set(false)
                             viewModel.stateText.value = getString(R.string.no_network_connection)
                             retryPopUp(getString(R.string.check_connection_and_retry))
                         }
                         else -> {
                             val errorMsg = networkState.message
                             viewModel.stateText.value = errorMsg
-                            viewModel.isLoading.set(false)
                             retryPopUp(getString(R.string.default_try_again_message))
                         }
                     }
                 }
                 Loaded -> {
-                    viewModel.isLoading.set(false)
+                    swipe_refresh.isRefreshing = false
                     viewModel.stateText.value = null
                 }
                 else -> {
-                    viewModel.isLoading.set(true)
+                    swipe_refresh.isRefreshing = true
                     viewModel.stateText.value = null
                 }
             }

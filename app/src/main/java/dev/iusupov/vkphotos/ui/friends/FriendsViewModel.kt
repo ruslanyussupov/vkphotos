@@ -1,6 +1,5 @@
 package dev.iusupov.vkphotos.ui.friends
 
-import androidx.databinding.ObservableBoolean
 import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.ViewModel
 import dev.iusupov.vkphotos.App
@@ -29,13 +28,16 @@ class FriendsViewModel : ViewModel() {
         dataSource.fetchFriends(viewModelScope)
     }
 
-    val isLoading =  ObservableBoolean()
     val stateText = MutableLiveData<String>()
 
     fun retry() {
         viewModelScope.launch {
             friendsListing.retry()
         }
+    }
+
+    fun refresh() {
+        friendsListing.refresh()
     }
 
     override fun onCleared() {

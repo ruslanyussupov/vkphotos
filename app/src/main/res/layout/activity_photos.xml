@@ -1,10 +1,11 @@
 <?xml version="1.0" encoding="utf-8"?>
 <layout xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
-    xmlns:bind="http://schemas.android.com/apk/res-auto"
     xmlns:tools="http://schemas.android.com/tools">
 
     <data>
+        <import type="android.view.View" />
+
         <variable
             name="viewModel"
             type="dev.iusupov.vkphotos.ui.photos.PhotosViewModel" />
@@ -29,23 +30,34 @@
 
             </com.google.android.material.appbar.AppBarLayout>
 
-            <androidx.recyclerview.widget.RecyclerView
-                android:id="@+id/photos_rv"
+            <androidx.swiperefreshlayout.widget.SwipeRefreshLayout
+                android:id="@+id/swipe_refresh"
                 android:layout_width="match_parent"
-                android:layout_height="match_parent"
-                android:padding="2dp"
-                android:scrollbars="vertical"
-                android:scrollbarThumbVertical="@color/colorPrimaryLight"
-                app:layoutManager="androidx.recyclerview.widget.StaggeredGridLayoutManager"
-                app:spanCount="2"
-                tools:listitem="@layout/item_photo"/>
+                android:layout_height="match_parent">
+
+                <androidx.recyclerview.widget.RecyclerView
+                    android:id="@+id/photos_rv"
+                    android:layout_width="match_parent"
+                    android:layout_height="match_parent"
+                    android:padding="2dp"
+                    android:scrollbars="vertical"
+                    android:scrollbarThumbVertical="@color/colorPrimaryLight"
+                    app:layoutManager="androidx.recyclerview.widget.StaggeredGridLayoutManager"
+                    app:spanCount="2"
+                    tools:listitem="@layout/item_photo"/>
+
+            </androidx.swiperefreshlayout.widget.SwipeRefreshLayout>
 
         </LinearLayout>
 
-        <include
-            layout="@layout/loading_state"
-            bind:isLoading="@{viewModel.isLoading}"
-            bind:stateText="@{viewModel.stateText}"/>
+        <TextView
+            android:id="@+id/state_tv"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_gravity="center"
+            android:text="@{viewModel.stateText}"
+            android:visibility="@{viewModel.stateText == null ? View.GONE : View.VISIBLE}"
+            tools:visibility="gone"/>
 
     </androidx.coordinatorlayout.widget.CoordinatorLayout>
 

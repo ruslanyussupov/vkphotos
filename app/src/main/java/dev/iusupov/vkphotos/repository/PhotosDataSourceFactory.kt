@@ -7,7 +7,14 @@ import kotlinx.coroutines.CoroutineScope
 class PhotosDataSourceFactory(private val request: PhotosDataSource.Request,
                               private val coroutineScope: CoroutineScope) : DataSource.Factory<Int, Photo>() {
 
+    private var dataSource: PhotosDataSource? = null
+
     override fun create(): DataSource<Int, Photo> {
-        return PhotosDataSource(request, coroutineScope)
+        dataSource = PhotosDataSource(request, coroutineScope)
+        return dataSource as PhotosDataSource
+    }
+
+    fun invalidateDataSource() {
+        dataSource?.invalidate()
     }
 }

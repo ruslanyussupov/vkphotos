@@ -30,7 +30,8 @@ class Repository(private val api: Api,
             pagedList,
             request.requestInitialState,
             request.requestRangeState,
-            request::retryAllFailed
+            request::retryAllFailed,
+            factory::invalidateDataSource
         )
     }
 
@@ -52,7 +53,8 @@ class Repository(private val api: Api,
             pagedList,
             request.requestInitialState,
             request.requestRangeState,
-            request::retryAllFailed
+            request::retryAllFailed,
+            factory::invalidateDataSource
         )
     }
 }

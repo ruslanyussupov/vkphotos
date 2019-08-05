@@ -6,37 +6,46 @@ import androidx.paging.PositionalDataSource
 import com.vk.api.sdk.exceptions.VKApiExecutionException
 import dev.iusupov.vkphotos.*
 import dev.iusupov.vkphotos.model.Photo
-import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.isActive
-import kotlinx.coroutines.launch
-import kotlinx.coroutines.coroutineScope
-import kotlinx.coroutines.delay
+import kotlinx.coroutines.*
 import timber.log.Timber
 import java.util.concurrent.LinkedBlockingQueue
 
 class PhotosDataSource(private val request: Request,
                        private val coroutineScope: CoroutineScope) : PositionalDataSource<Photo>() {
 
+    private val jobs = mutableSetOf<Job>()
+
     override fun loadInitial(params: LoadInitialParams, callback: LoadInitialCallback<Photo>) {
-        if (!coroutineScope.isActive) return
-
         val count = params.requestedLoadSize
-        val offset = params.requestedStartPosition
+        val offset = 0
 
-        coroutineScope.launch {
+        jobs += coroutineScope.launch {
             request.requestInitial(count, offset, callback)
+        }.apply {
+            invokeOnCompletion {
+                jobs.remove(this)
+            }
         }
     }
 
     override fun loadRange(params: LoadRangeParams, callback: LoadRangeCallback<Photo>) {
-        if (!coroutineScope.isActive) return
-
         val count = params.loadSize
         val offset = params.startPosition
 
-        coroutineScope.launch {
+        jobs += coroutineScope.launch {
             request.requestRange(count, offset, callback)
+        }.apply {
+            invokeOnCompletion {
+                jobs.remove(this)
+            }
         }
+    }
+
+    override fun invalidate() {
+        jobs.forEach {
+            it.cancel()
+        }
+        super.invalidate()
     }
 
     class Request(private val ownerId: Int,

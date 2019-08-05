@@ -7,7 +7,14 @@ import kotlinx.coroutines.CoroutineScope
 class FriendsDataSourceFactory(private val request: FriendsDataSource.Request,
                                private val coroutineScope: CoroutineScope) : DataSource.Factory<Int, User>() {
 
+    private var dataSource: FriendsDataSource? = null
+
     override fun create(): DataSource<Int, User> {
-        return FriendsDataSource(request, coroutineScope)
+        dataSource = FriendsDataSource(request, coroutineScope)
+        return dataSource as FriendsDataSource
+    }
+
+    fun invalidateDataSource() {
+        dataSource?.invalidate()
     }
 }

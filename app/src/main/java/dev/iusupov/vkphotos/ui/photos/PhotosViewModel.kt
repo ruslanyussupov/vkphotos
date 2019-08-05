@@ -1,7 +1,6 @@
 package dev.iusupov.vkphotos.ui.photos
 
 import android.graphics.Bitmap
-import androidx.databinding.ObservableBoolean
 import androidx.lifecycle.LiveData
 import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.ViewModel
@@ -41,7 +40,6 @@ class PhotosViewModel(ownerId: Int) : ViewModel() {
         )
     }
 
-    val isLoading = ObservableBoolean()
     val stateText = MutableLiveData<String?>()
 
     init {
@@ -75,6 +73,10 @@ class PhotosViewModel(ownerId: Int) : ViewModel() {
         viewModelScope.launch {
             photosListing.retry()
         }
+    }
+
+    fun refresh() {
+        photosListing.refresh()
     }
 
     override fun onCleared() {

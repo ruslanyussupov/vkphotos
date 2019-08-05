@@ -9,25 +9,27 @@ import dev.iusupov.vkphotos.Loaded
 import dev.iusupov.vkphotos.Loading
 import dev.iusupov.vkphotos.NetworkState
 import dev.iusupov.vkphotos.model.User
-import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.isActive
-import kotlinx.coroutines.launch
-import kotlinx.coroutines.coroutineScope
-import kotlinx.coroutines.delay
+import kotlinx.coroutines.*
 import timber.log.Timber
 import java.util.concurrent.LinkedBlockingQueue
 
 class FriendsDataSource(private val request: Request,
                         private val coroutineScope: CoroutineScope) : PositionalDataSource<User>() {
 
+    private val jobs = mutableSetOf<Job>()
+
     override fun loadInitial(params: LoadInitialParams, callback: LoadInitialCallback<User>) {
         if (!coroutineScope.isActive) return
 
         val count = params.requestedLoadSize
-        val offset = params.requestedStartPosition
+        val offset = 0
 
-        coroutineScope.launch {
+        jobs += coroutineScope.launch {
             request.requestInitial(count, offset, callback)
+        }.apply {
+            invokeOnCompletion {
+                jobs.remove(this)
+            }
         }
     }
 
@@ -37,9 +39,20 @@ class FriendsDataSource(private val request: Request,
         val count = params.loadSize
         val offset = params.startPosition
 
-        coroutineScope.launch {
+        jobs += coroutineScope.launch {
             request.requestRange(count, offset, callback)
+        }.apply {
+            invokeOnCompletion {
+                jobs.remove(this)
+            }
         }
+    }
+
+    override fun invalidate() {
+        jobs.forEach {
+            it.cancel()
+        }
+        super.invalidate()
     }
 
     class Request(private val userId: Int,

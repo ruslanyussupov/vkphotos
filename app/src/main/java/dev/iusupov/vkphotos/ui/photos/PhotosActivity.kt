@@ -12,7 +12,7 @@ import dev.iusupov.vkphotos.databinding.ActivityPhotosBinding
 import dev.iusupov.vkphotos.ext.getViewModel
 import dev.iusupov.vkphotos.model.Photo
 import dev.iusupov.vkphotos.utils.hasNetworkConnection
-import kotlinx.android.synthetic.main.activity_photos.root
+import kotlinx.android.synthetic.main.activity_photos.*
 import kotlinx.android.synthetic.main.toolbar.*
 
 class PhotosActivity : AppCompatActivity() {
@@ -36,6 +36,8 @@ class PhotosActivity : AppCompatActivity() {
         setupAppBar(title)
 
         initAdapter()
+
+        setupSwipeToRefresh()
 
         handleNetworkStates()
     }
@@ -61,38 +63,41 @@ class PhotosActivity : AppCompatActivity() {
         })
     }
 
+    private fun setupSwipeToRefresh() {
+        swipe_refresh.setOnRefreshListener {
+            viewModel.refresh()
+        }
+    }
+
     private fun handleNetworkStates() {
         viewModel.photosListing.loadInitialNetworkState.observe(this, Observer { networkState ->
             when (networkState) {
                 is Error -> {
+                    swipe_refresh.isRefreshing = false
                     when {
                         networkState.code == Error.ERROR_CODE_PRIVATE_PROFILE -> {
-                            viewModel.isLoading.set(false)
                             viewModel.stateText.value = getString(R.string.profile_is_private)
                         }
                         networkState.code == Error.ERROR_CODE_NO_DATA -> {
-                            viewModel.isLoading.set(false)
                             viewModel.stateText.value = getString(R.string.photos_empty_state)
                         }
                         !hasNetworkConnection(this) -> {
-                            viewModel.isLoading.set(false)
                             viewModel.stateText.value = getString(R.string.no_network_connection)
                             retryPopUp(getString(R.string.check_connection_and_retry))
                         }
                         else -> {
                             val errorMsg = networkState.message
                             viewModel.stateText.value = errorMsg
-                            viewModel.isLoading.set(false)
                             retryPopUp(getString(R.string.default_try_again_message))
                         }
                     }
                 }
                 Loaded -> {
-                    viewModel.isLoading.set(false)
+                    swipe_refresh.isRefreshing = false
                     viewModel.stateText.value = null
                 }
                 else -> {
-                    viewModel.isLoading.set(true)
+                    swipe_refresh.isRefreshing = true
                     viewModel.stateText.value = null
                 }
             }
