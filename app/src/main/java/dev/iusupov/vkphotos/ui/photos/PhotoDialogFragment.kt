@@ -2,13 +2,11 @@ package dev.iusupov.vkphotos.ui.photos
 
 import android.animation.Animator
 import android.animation.AnimatorListenerAdapter
-import android.annotation.SuppressLint
 import android.os.Bundle
 import android.os.Handler
 import android.view.*
 import android.widget.Toast
 import androidx.core.content.ContextCompat
-import androidx.core.view.GestureDetectorCompat
 import androidx.core.view.isVisible
 import androidx.databinding.DataBindingUtil
 import androidx.fragment.app.DialogFragment
@@ -20,12 +18,10 @@ import dev.iusupov.vkphotos.ext.getViewModel
 import kotlinx.android.synthetic.main.toolbar.*
 import timber.log.Timber
 
-// TODO: implement zoom as in https://github.com/chrisbanes/PhotoView
 class PhotoDialogFragment : DialogFragment() {
 
     private lateinit var viewModel: PhotosViewModel
     private lateinit var binding: FragmentDialogPhotoBinding
-    private lateinit var gestureDetector: GestureDetectorCompat
     private var shortAnimationDuration = 0
     private val handler = Handler()
 
@@ -46,31 +42,19 @@ class PhotoDialogFragment : DialogFragment() {
         super.onCreate(savedInstanceState)
 
         shortAnimationDuration = resources.getInteger(android.R.integer.config_shortAnimTime)
-        gestureDetector = GestureDetectorCompat(context, object : GestureDetector.SimpleOnGestureListener() {
-            override fun onDown(e: MotionEvent?): Boolean {
-                return true
-            }
-
-            override fun onSingleTapUp(e: MotionEvent?): Boolean {
-                if (isSystemUiVisible()) {
-                    handler.removeCallbacks(hideSystemUiRunnable)
-                    hideSystemUiRunnable.run()
-                } else {
-                    showStatusBar()
-                }
-                return true
-            }
-        })
-
         setStyle(STYLE_NORMAL, R.style.FullScreenDialog)
     }
 
-    @SuppressLint("ClickableViewAccessibility")
     override fun onCreateView(inflater: LayoutInflater, container: ViewGroup?, savedInstanceState: Bundle?): View? {
         binding = DataBindingUtil.inflate(inflater, R.layout.fragment_dialog_photo, container, false)
 
-        binding.root.setOnTouchListener { _, event ->
-            gestureDetector.onTouchEvent(event)
+        binding.photo.setOnViewTapListener { _, _, _ ->
+            if (isSystemUiVisible()) {
+                handler.removeCallbacks(hideSystemUiRunnable)
+                hideSystemUiRunnable.run()
+            } else {
+                showStatusBar()
+            }
         }
 
         val ownerId = arguments!!.getInt(OWNER_ID_BUNDLE)
