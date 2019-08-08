@@ -2,11 +2,14 @@ package dev.iusupov.vkphotos.ui.photos
 
 import android.animation.Animator
 import android.animation.AnimatorListenerAdapter
+import android.annotation.SuppressLint
 import android.os.Bundle
 import android.os.Handler
 import android.view.*
 import android.widget.Toast
 import androidx.core.content.ContextCompat
+import androidx.core.view.GestureDetectorCompat
+import androidx.core.view.isVisible
 import androidx.databinding.DataBindingUtil
 import androidx.fragment.app.DialogFragment
 import androidx.lifecycle.Observer
@@ -15,25 +18,27 @@ import dev.iusupov.vkphotos.R
 import dev.iusupov.vkphotos.databinding.FragmentDialogPhotoBinding
 import dev.iusupov.vkphotos.ext.getViewModel
 import kotlinx.android.synthetic.main.toolbar.*
+import timber.log.Timber
 
 // TODO: implement zoom as in https://github.com/chrisbanes/PhotoView
-// TODO: show/hide system UI onSingleTapUp
 class PhotoDialogFragment : DialogFragment() {
 
     private lateinit var viewModel: PhotosViewModel
     private lateinit var binding: FragmentDialogPhotoBinding
+    private lateinit var gestureDetector: GestureDetectorCompat
     private var shortAnimationDuration = 0
     private val handler = Handler()
 
     private val hideSystemUiRunnable = Runnable {
         hideStatusBar()
-        hideToolbar()
     }
 
     private val onSystemUiVisibilityChangeListener: (Int) -> Unit = { visibility ->
-        if (visibility == View.VISIBLE) {
+        if (visibility and View.SYSTEM_UI_FLAG_FULLSCREEN == 0) {
             showToolbar()
             handler.postDelayed(hideSystemUiRunnable, 3_000L)
+        } else {
+            hideToolbar()
         }
     }
 
@@ -41,21 +46,40 @@ class PhotoDialogFragment : DialogFragment() {
         super.onCreate(savedInstanceState)
 
         shortAnimationDuration = resources.getInteger(android.R.integer.config_shortAnimTime)
+        gestureDetector = GestureDetectorCompat(context, object : GestureDetector.SimpleOnGestureListener() {
+            override fun onDown(e: MotionEvent?): Boolean {
+                return true
+            }
+
+            override fun onSingleTapUp(e: MotionEvent?): Boolean {
+                if (isSystemUiVisible()) {
+                    handler.removeCallbacks(hideSystemUiRunnable)
+                    hideSystemUiRunnable.run()
+                } else {
+                    showStatusBar()
+                }
+                return true
+            }
+        })
 
         setStyle(STYLE_NORMAL, R.style.FullScreenDialog)
     }
 
+    @SuppressLint("ClickableViewAccessibility")
     override fun onCreateView(inflater: LayoutInflater, container: ViewGroup?, savedInstanceState: Bundle?): View? {
         binding = DataBindingUtil.inflate(inflater, R.layout.fragment_dialog_photo, container, false)
 
-        val ownerId = arguments?.getInt(OWNER_ID_BUNDLE) ?: -1
-        viewModel = activity?.getViewModel { PhotosViewModel(ownerId) } ?: return binding.root
+        binding.root.setOnTouchListener { _, event ->
+            gestureDetector.onTouchEvent(event)
+        }
+
+        val ownerId = arguments!!.getInt(OWNER_ID_BUNDLE)
+        viewModel = activity!!.getViewModel { PhotosViewModel(ownerId) }
 
         binding.lifecycleOwner = this
         binding.networkState = viewModel.openedPhotoState
 
-        // TODO: Use viewLifecycleOwner
-        viewModel.openedPhoto.observe(this, Observer {
+        viewModel.openedPhoto.observe(viewLifecycleOwner, Observer {
             if (it == null) {
                 binding.photo.setImageResource(R.drawable.error_photo_placeholder)
             } else {
@@ -99,6 +123,11 @@ class PhotoDialogFragment : DialogFragment() {
     override fun onPause() {
         super.onPause()
         handler.removeCallbacks(hideSystemUiRunnable)
+    }
+
+    override fun onDestroy() {
+        super.onDestroy()
+        Timber.d("#onDestroy")
     }
 
     override fun onCreateOptionsMenu(menu: Menu?, inflater: MenuInflater?) {
@@ -148,6 +177,11 @@ class PhotoDialogFragment : DialogFragment() {
                 or View.SYSTEM_UI_FLAG_LAYOUT_FULLSCREEN
                 or View.SYSTEM_UI_FLAG_HIDE_NAVIGATION
                 or View.SYSTEM_UI_FLAG_FULLSCREEN)
+    }
+
+    private fun isSystemUiVisible(): Boolean {
+        return toolbar.isVisible
+                && (dialog!!.window!!.decorView.systemUiVisibility and View.SYSTEM_UI_FLAG_FULLSCREEN == 0)
     }
 
     companion object {
